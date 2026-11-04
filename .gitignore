@@ -1,0 +1,10 @@
+keycycle.db
+*.db
+*.db-journal
+backups/
+.env
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
