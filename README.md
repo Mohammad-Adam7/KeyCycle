@@ -2,8 +2,6 @@
 
 KeyCycle is a training-grade web service for managing the lifecycle of cryptographic keys. It supports key creation, controlled encryption and decryption, scheduled rotation, expiry, revocation, and backup and recovery. Every security-relevant action is recorded in a tamper-evident audit log.
 
-**Course project:** Class 2, Group 9, Proposal 24 (Cryptography and Infrastructure Security)
-**Stack:** Python 3.11+, FastAPI, SQLite, Argon2id, AES-256-GCM, JavaScript
 
 ## Design principles
 
