@@ -21,12 +21,14 @@ ERRORS = {
     "SETUP_CLOSED": (404, "Not found."),
     "NOT_IMPLEMENTED": (501, "This feature is not available yet."),
     "INTERNAL_ERROR": (500, "An unexpected error occurred."),
+    "RESULT_NOT_FOUND": (404, "Result not found."),
 }
 
 
 class AppError(Exception):
-    def __init__(self, code: str, audit_entry: int | None = None):
+    def __init__(self, code: str, audit_entry: int | None = None, result: dict | None = None):
         self.code = code
         self.status, self.message = ERRORS[code]
         self.audit_entry = audit_entry
+        self.result = result
         super().__init__(code)

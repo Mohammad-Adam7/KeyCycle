@@ -21,3 +21,11 @@ KDF_FAST = dict(time_cost=1, memory_cost=8, parallelism=1)
 
 def kdf_params() -> dict:
     return KDF_FAST if os.environ.get("KEYCYCLE_FAST_KDF") == "1" else KDF_STRONG
+
+SCHEMA_VERSION = 1
+ID_MAX = 2**63 - 1
+HARD_MAX_PLAINTEXT_BYTES = 128 * 1024
+MAX_PACKAGE_CHARS = 180_000
+CONFIRMATION_TTL_SECONDS = 300
+SCHEDULER_INTERVAL_SECONDS = 30
+SCHEDULER_BATCH = 100

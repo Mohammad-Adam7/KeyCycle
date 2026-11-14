@@ -1,6 +1,6 @@
 # KeyCycle: Cryptographic Key Lifecycle Manager
 
-KeyCycle is a training-grade web service for managing the lifecycle of cryptographic keys. It supports key creation, controlled encryption and decryption, scheduled rotation, expiry, revocation, and backup and recovery. Every security-relevant action is recorded in a tamper-evident audit log.
+KeyCycle is a training-grade web service for managing the lifecycle of cryptographic keys. Parts A and B implement authentication, the encrypted vault, controlled encryption and decryption, key versions, scheduled rotation, expiry and revocation. Basic audit recording exists; cryptographic audit chaining, backup/recovery (Part C), and the frontend/integration (Part D) remain separate work.
 
 
 ## Design principles
@@ -60,3 +60,47 @@ python -m pytest
 ```
 
 Set `KEYCYCLE_FAST_KDF=1` to use lightweight key-derivation settings for tests only. Never use it in a real deployment.
+
+**Part B usage and handoff**
+
+Run a single application process with one worker per database:
+
+```powershell
+.\.venv\Scripts\python.exe -m uvicorn app.main:create_app --factory --workers 1
+```
+
+Scheduler starts with the application lifespan, wakes immediately after vault unlock,
+and shuts down before the vault locks. Existing databases receive additive indexes,
+a state-transition trigger and a confirmations table at startup. Stop the server and
+make an offline consistent database backup before upgrading. No rows are dropped,
+except transient confirmation tokens, which intentionally clear on every startup.
+Do not start multiple independent app instances against the same database.
+
+Install direct tested pins with `pip install -r requirements.txt`. The complete
+observed environment is captured in `requirements-lock.txt`; it was verified on
+Windows/Python 3.14.6. Other interpreters/platforms must run the tests rather than
+assume that the lock has been validated there.
+
+- [API contract](doc/Part-B-API.md): routes, roles, response shapes, package format and scheduler.
+- [Team handoff](doc/Part-B-Handoff.md): verified tests and explicit A/C/D work.
+
+Create a fresh synthetic demo database (prompts for credentials; refuses overwrite):
+
+```powershell
+.\.venv\Scripts\python.exe scripts/seed_demo.py --db demo-output/demo.db --fixtures demo-output/packages.json
+$env:KEYCYCLE_DB = 'D:\KeyCycle\demo-output\demo.db'
+.\.venv\Scripts\python.exe -m uvicorn app.main:create_app --factory --workers 1
+```
+
+In another terminal, run the HTTP demo and enter the same demo credentials:
+
+```powershell
+.\.venv\Scripts\python.exe scripts/demo_part_b.py
+```
+
+The walkthrough creates a new standard key, encrypts, rotates, decrypts the older
+package, revokes and confirms denial. It finishes by locking the vault and logging
+out. Demo accounts are admin, operator1, operator2, viewer and disabled trainee;
+all use the password supplied during seeding. Never deploy these synthetic accounts.
+Database files and demo packages are ignored by Git. To return to the default
+database in a terminal, run `Remove-Item Env:KEYCYCLE_DB -ErrorAction SilentlyContinue`.
