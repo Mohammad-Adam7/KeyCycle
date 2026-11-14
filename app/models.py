@@ -45,3 +45,76 @@ class UserPatch(Strict):
 
 class SettingPatch(Strict):
     value: int
+
+
+# Part B uses strict types without changing A's request contract.
+import unicodedata
+from pydantic import field_validator
+from .config import ID_MAX, MAX_PACKAGE_CHARS
+from .key_policy import parse_expiry
+
+
+class BStrict(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    @field_validator("*", mode="after")
+    @classmethod
+    def valid_text(cls, value):
+        if isinstance(value, str):
+            try:
+                value.encode("utf-8")
+            except UnicodeEncodeError:
+                raise ValueError("invalid Unicode") from None
+        return value
+
+
+class KeyCreate(BStrict):
+    name: str = Field(min_length=1, max_length=64)
+    purpose: Literal["standard", "test"]
+    algorithm: Literal["AES-256-GCM"] = "AES-256-GCM"
+    rotation_days: int = Field(default=90, ge=1, le=365)
+    expires_at: str | None = None
+
+    @field_validator("name")
+    @classmethod
+    def clean_name(cls, value):
+        if value != value.strip() or any(unicodedata.category(c) == "Cc" for c in value):
+            raise ValueError("invalid name")
+        return value
+
+    @field_validator("expires_at")
+    @classmethod
+    def valid_expiry(cls, value):
+        try:
+            parse_expiry(value)
+        except (ValueError, OverflowError, OSError):
+            raise ValueError("invalid expiry") from None
+        return value
+
+
+class EncryptIn(BStrict):
+    key_id: int = Field(ge=1, le=ID_MAX)
+    data: str = Field(min_length=1)
+
+
+class DecryptIn(BStrict):
+    package: str = Field(max_length=MAX_PACKAGE_CHARS)
+
+
+class ConfirmationIn(BStrict):
+    action: Literal["rotate", "revoke"]
+    key_id: int = Field(ge=1, le=ID_MAX)
+
+
+class RotateIn(BStrict):
+    confirmation_token: str = Field(min_length=1, max_length=100)
+
+
+class RevokeIn(RotateIn):
+    reason: str = Field(min_length=1, max_length=200)
+    confirm_name: str = Field(min_length=1, max_length=64)
+
+    @field_validator("reason")
+    @classmethod
+    def clean_reason(cls, value):
+        return KeyCreate.clean_name(value)

@@ -1,4 +1,5 @@
 import sqlite3
+from contextlib import contextmanager
 from pathlib import Path
 
 from .config import SETTINGS
@@ -24,3 +25,16 @@ def init_db(path: str) -> None:
 def get_setting(conn: sqlite3.Connection, name: str) -> int:
     row = conn.execute("SELECT value FROM settings WHERE name = ?", (name,)).fetchone()
     return int(row["value"]) if row else SETTINGS[name][0]
+
+
+@contextmanager
+def transaction(conn):
+    """The caller owns one write transaction; helpers must never commit."""
+    conn.execute("BEGIN IMMEDIATE")
+    try:
+        yield conn
+        conn.execute("COMMIT")
+    except BaseException:
+        if conn.in_transaction:
+            conn.execute("ROLLBACK")
+        raise

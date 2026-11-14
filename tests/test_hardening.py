@@ -9,14 +9,18 @@ from app.main import create_app
 from conftest import ADMIN_PW, PASSPHRASE
 
 PUBLIC = {("POST", "/api/setup"), ("POST", "/api/auth/login")}
-OPEN_TO_ANY_SIGNED_IN_USER = {"/api/auth/session", "/api/auth/logout", "/api/vault/status"}
+OPEN_TO_ANY_SIGNED_IN_USER = {("GET", "/api/auth/session"), ("POST", "/api/auth/logout"),
+    ("GET", "/api/vault/status"), ("GET", "/api/keys"), ("GET", "/api/keys/1"),
+    ("GET", "/api/results"), ("GET", "/api/results/1")}
 
 
 def routes(app):
-    for r in app.routes:
-        if r.path.startswith("/api"):
-            for m in r.methods - {"HEAD", "OPTIONS"}:
-                yield m, r.path.replace("{user_id}", "1").replace("{name}", "lockout_minutes")
+    # OpenAPI enumerates included routers too (new FastAPI uses lazy wrappers).
+    for path, operations in app.openapi()["paths"].items():
+        if path.startswith("/api"):
+            for m in operations:
+                if m in {"get", "post", "patch", "put", "delete"}:
+                    yield m.upper(), path.replace("{user_id}", "1").replace("{name}", "lockout_minutes").replace("{key_id}", "1").replace("{entry}", "1")
 
 
 def test_every_endpoint_refuses_unauthenticated_requests(ctx):
@@ -35,7 +39,7 @@ def test_every_endpoint_outside_the_allowlist_refuses_a_viewer(admin):
     pw = admin.make_user("view1", "viewer")
     c = admin.as_user("view1", pw)
     for method, path in routes(admin.app):
-        if (method, path) in PUBLIC or path in OPEN_TO_ANY_SIGNED_IN_USER:
+        if (method, path) in PUBLIC or (method, path) in OPEN_TO_ANY_SIGNED_IN_USER:
             continue
         r = c.request(method, path, json={})
         assert r.status_code == 403 and r.json()["code"] == "FORBIDDEN", (method, path)

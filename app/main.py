@@ -1,5 +1,7 @@
 import os
 import time
+import asyncio
+from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, Request, Response
 from fastapi.exceptions import RequestValidationError
@@ -14,6 +16,8 @@ from .models import LoginIn, SetupIn, SettingPatch, UnlockIn, UserCreate, UserPa
 from .bodylimit import BodyLimit
 from .security import FailureTracker, RateLimiter, make_hasher, new_token, token_hash, verify_password
 from .vault import Vault
+from .key_routes import router as key_router
+from .scheduler import Scheduler
 
 LOGIN_PER_MINUTE_PER_ADDRESS = 20
 
@@ -26,15 +30,33 @@ HEADERS = {
 
 
 def error_response(e: AppError) -> JSONResponse:
-    return JSONResponse({"code": e.code, "message": e.message, "audit_entry": e.audit_entry}, status_code=e.status)
+    body = {"code": e.code, "message": e.message, "audit_entry": e.audit_entry}
+    if e.result is not None:
+        body["result"] = e.result
+    return JSONResponse(body, status_code=e.status)
 
 
-def create_app(db_path: str | None = None) -> FastAPI:
+def create_app(db_path: str | None = None, *, scheduler_interval: float = 30.0) -> FastAPI:
     db_path = db_path or os.environ.get("KEYCYCLE_DB", "keycycle.db")
     init_db(db_path)
-    app = FastAPI(title="KeyCycle", docs_url=None, redoc_url=None)
+    startup_conn = connect(db_path)
+    try:
+        startup_conn.execute("DELETE FROM confirmations")
+    finally:
+        startup_conn.close()
+    @asynccontextmanager
+    async def lifespan(application):
+        application.state.scheduler.start()
+        try:
+            yield
+        finally:
+            await asyncio.to_thread(application.state.scheduler.stop)
+            application.state.vault.lock()
+
+    app = FastAPI(title="KeyCycle", docs_url=None, redoc_url=None, lifespan=lifespan)
     app.state.db_path = db_path
     app.state.vault = Vault()
+    app.state.scheduler = Scheduler(db_path, app.state.vault, scheduler_interval)
     app.state.limiter = RateLimiter()
     app.state.login_throttle = RateLimiter()
     app.state.failures = FailureTracker()
@@ -43,6 +65,7 @@ def create_app(db_path: str | None = None) -> FastAPI:
 
     @app.middleware("http")
     async def wrap(request: Request, call_next):
+        request.state.t0 = time.perf_counter()
         request.state.conn = connect(db_path)
         try:
             resp = await call_next(request)
@@ -160,6 +183,7 @@ def create_app(db_path: str | None = None) -> FastAPI:
             raise AppError("PASSPHRASE_INVALID", entry)
         app.state.failures.reset(conn, key)
         audit.record(conn, user=p.username, role=p.role, action="vault_unlock", outcome="success")
+        app.state.scheduler.wake()
         return {"locked": False}
 
     @app.post("/api/vault/lock")
@@ -231,9 +255,7 @@ def create_app(db_path: str | None = None) -> FastAPI:
                      outcome="success", details={"old": old, "new": body.value})
         return {"name": name, "value": body.value}
 
-    @app.post("/api/keys", status_code=201)
-    def create_key(request: Request, p: Principal = Depends(permission("manage_keys"))):
-        raise AppError("NOT_IMPLEMENTED")
+    app.include_router(key_router, prefix="/api")
 
     app.add_middleware(BodyLimit, limit=MAX_BODY_BYTES)
     return app

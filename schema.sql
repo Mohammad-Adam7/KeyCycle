@@ -93,3 +93,25 @@ CREATE TABLE IF NOT EXISTS failures (
   locked_until INTEGER NOT NULL DEFAULT 0,
   updated_at   INTEGER NOT NULL
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS key_versions_one_current
+ON key_versions(key_id) WHERE status = 'current';
+CREATE INDEX IF NOT EXISTS keys_state_expiry ON keys(state, expires_at);
+CREATE INDEX IF NOT EXISTS audit_events_action_user ON audit_events(action, user);
+CREATE TRIGGER IF NOT EXISTS keys_state_transition BEFORE UPDATE OF state ON keys
+WHEN NOT (NEW.state = OLD.state
+ OR (OLD.state = 'active' AND NEW.state IN ('expired','revoked'))
+ OR (OLD.state = 'expired' AND NEW.state = 'revoked'))
+BEGIN SELECT RAISE(ABORT, 'illegal key state transition'); END;
+CREATE TABLE IF NOT EXISTS confirmations (
+ token_hash TEXT PRIMARY KEY,
+ user_id INTEGER NOT NULL REFERENCES users(id),
+ session_hash TEXT NOT NULL,
+ action TEXT NOT NULL,
+ target TEXT NOT NULL,
+ expected_version INTEGER,
+ created_at INTEGER NOT NULL,
+ expires_at INTEGER NOT NULL,
+ used_at INTEGER
+);
+CREATE INDEX IF NOT EXISTS confirmations_expiry ON confirmations(expires_at);

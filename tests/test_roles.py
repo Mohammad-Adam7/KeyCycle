@@ -15,7 +15,10 @@ def test_T2_non_admin_cannot_create_a_key(admin, role):
 
 def test_administrator_passes_the_role_check(admin):
     r = admin.client.post("/api/keys")
-    assert r.json()["code"] == "NOT_IMPLEMENTED"
+    assert r.json()["code"] == "INVALID_INPUT"
+    from conftest import PASSPHRASE
+    admin.client.post("/api/vault/unlock", json={"passphrase": PASSPHRASE})
+    assert admin.client.post("/api/keys", json={"name":"role-test", "purpose":"test"}).status_code == 201
 
 
 @pytest.mark.parametrize("path", ["/api/users", "/api/settings"])
