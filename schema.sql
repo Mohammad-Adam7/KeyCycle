@@ -58,6 +58,12 @@ CREATE TRIGGER IF NOT EXISTS audit_no_update BEFORE UPDATE ON audit_events
 BEGIN SELECT RAISE(ABORT, 'audit log is append-only'); END;
 CREATE TRIGGER IF NOT EXISTS audit_no_delete BEFORE DELETE ON audit_events
 BEGIN SELECT RAISE(ABORT, 'audit log is append-only'); END;
+CREATE TRIGGER IF NOT EXISTS audit_chain_previous BEFORE INSERT ON audit_events
+WHEN NEW.prev_hash <> COALESCE(
+  (SELECT hash FROM audit_events ORDER BY entry_no DESC LIMIT 1),
+  '0000000000000000000000000000000000000000000000000000000000000000'
+)
+BEGIN SELECT RAISE(ABORT, 'audit chain previous hash mismatch'); END;
 
 CREATE TABLE IF NOT EXISTS settings (
   name       TEXT PRIMARY KEY,

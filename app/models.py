@@ -102,8 +102,21 @@ class DecryptIn(BStrict):
 
 
 class ConfirmationIn(BStrict):
-    action: Literal["rotate", "revoke"]
-    key_id: int = Field(ge=1, le=ID_MAX)
+    action: Literal["rotate", "revoke", "backup", "restore", "recovery_drill"]
+    key_id: int | None = Field(default=None, ge=1, le=ID_MAX)
+    backup_name: str | None = Field(default=None, min_length=1, max_length=128)
+
+    @model_validator(mode="after")
+    def target_matches_action(self):
+        key_action = self.action in ("rotate", "revoke")
+        named_action = self.action in ("restore", "recovery_drill")
+        if key_action and (self.key_id is None or self.backup_name is not None):
+            raise ValueError("key confirmation requires a key")
+        if self.action == "backup" and (self.key_id is not None or self.backup_name is not None):
+            raise ValueError("backup confirmation has no named target")
+        if named_action and (self.key_id is not None or self.backup_name is None):
+            raise ValueError("restore confirmation requires a backup")
+        return self
 
 
 class RotateIn(BStrict):

@@ -81,7 +81,11 @@ def decrypt(request: Request, p: Principal = Depends(permission("use_key")), raw
 @router.post("/confirmations", status_code=201)
 def issue(request: Request, p: Principal = Depends(permission("manage_keys")), raw: Any = Body(None)):
     s=service(request,p)
-    return s.issue(parse(ConfirmationIn,raw,s,"confirmation_issue","manage_keys"))
+    body = parse(ConfirmationIn,raw,s,"confirmation_issue","manage_keys")
+    if body.action in ("rotate", "revoke"):
+        return s.issue(body)
+    from .backup_routes import issue_confirmation
+    return issue_confirmation(request, p, body)
 
 
 @router.post("/keys/{key_id}/rotate")

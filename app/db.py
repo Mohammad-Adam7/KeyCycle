@@ -17,6 +17,8 @@ def connect(path: str) -> sqlite3.Connection:
 def init_db(path: str) -> None:
     conn = connect(path)
     conn.executescript(SCHEMA.read_text())
+    from . import audit
+    audit.migrate_legacy(conn)
     for name, (default, *_rest) in SETTINGS.items():
         conn.execute("INSERT OR IGNORE INTO settings(name, value) VALUES (?, ?)", (name, default))
     conn.close()

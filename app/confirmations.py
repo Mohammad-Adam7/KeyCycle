@@ -3,17 +3,25 @@ from .security import token_hash
 from .config import CONFIRMATION_TTL_SECONDS
 
 
-def issue(conn, actor, session_hash, action, key_id, version, now):
+def issue_target(conn, actor, session_hash, action, target, version, now):
     conn.execute("DELETE FROM confirmations WHERE token_hash IN (SELECT token_hash FROM confirmations WHERE expires_at<=? LIMIT 500)", (now,))
     raw = secrets.token_urlsafe(32)
     conn.execute("INSERT INTO confirmations(token_hash,user_id,session_hash,action,target,expected_version,created_at,expires_at) VALUES (?,?,?,?,?,?,?,?)",
-                 (token_hash(raw), actor.user_id, session_hash, action, f"key:{key_id}", version, now, now + CONFIRMATION_TTL_SECONDS))
+                 (token_hash(raw), actor.user_id, session_hash, action, target, version, now, now + CONFIRMATION_TTL_SECONDS))
     return raw
 
 
-def validate(conn, actor, session_hash, action, key_id, raw, now):
+def issue(conn, actor, session_hash, action, key_id, version, now):
+    return issue_target(conn, actor, session_hash, action, f"key:{key_id}", version, now)
+
+
+def validate_target(conn, actor, session_hash, action, target, raw, now):
     return conn.execute("SELECT * FROM confirmations WHERE token_hash=? AND user_id=? AND session_hash=? AND action=? AND target=? AND used_at IS NULL AND expires_at>?",
-                        (token_hash(raw), actor.user_id, session_hash, action, f"key:{key_id}", now)).fetchone()
+                        (token_hash(raw), actor.user_id, session_hash, action, target, now)).fetchone()
+
+
+def validate(conn, actor, session_hash, action, key_id, raw, now):
+    return validate_target(conn, actor, session_hash, action, f"key:{key_id}", raw, now)
 
 
 def consume(conn, row, now):
