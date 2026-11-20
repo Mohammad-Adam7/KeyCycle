@@ -2,6 +2,7 @@ import os
 import time
 import asyncio
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import Depends, FastAPI, Request, Response
 from fastapi.exceptions import RequestValidationError
@@ -18,6 +19,10 @@ from .security import FailureTracker, RateLimiter, make_hasher, new_token, token
 from .vault import Vault
 from .key_routes import router as key_router
 from .scheduler import Scheduler
+from .audit_routes import router as audit_router
+from .backup import Store as BackupStore
+from .backup_routes import router as backup_router
+from .maintenance import MaintenanceBarrier
 
 LOGIN_PER_MINUTE_PER_ADDRESS = 20
 
@@ -55,6 +60,8 @@ def create_app(db_path: str | None = None, *, scheduler_interval: float = 30.0) 
 
     app = FastAPI(title="KeyCycle", docs_url=None, redoc_url=None, lifespan=lifespan)
     app.state.db_path = db_path
+    app.state.backup_store = BackupStore(Path(db_path).resolve().parent / "backups")
+    app.state.maintenance = MaintenanceBarrier()
     app.state.vault = Vault()
     app.state.scheduler = Scheduler(db_path, app.state.vault, scheduler_interval)
     app.state.limiter = RateLimiter()
@@ -65,12 +72,19 @@ def create_app(db_path: str | None = None, *, scheduler_interval: float = 30.0) 
 
     @app.middleware("http")
     async def wrap(request: Request, call_next):
+        exclusive = (request.method == "POST" and request.url.path.startswith("/api/backups/")
+                     and request.url.path.endswith("/restore"))
+        await asyncio.to_thread(app.state.maintenance.enter, exclusive)
         request.state.t0 = time.perf_counter()
-        request.state.conn = connect(db_path)
+        conn = None
         try:
+            conn = connect(db_path)
+            request.state.conn = conn
             resp = await call_next(request)
         finally:
-            request.state.conn.close()
+            if conn is not None:
+                conn.close()
+            app.state.maintenance.leave(exclusive)
         for k, v in HEADERS.items():
             resp.headers[k] = v
         if request.url.path.startswith("/api"):
@@ -256,6 +270,8 @@ def create_app(db_path: str | None = None, *, scheduler_interval: float = 30.0) 
         return {"name": name, "value": body.value}
 
     app.include_router(key_router, prefix="/api")
+    app.include_router(audit_router, prefix="/api")
+    app.include_router(backup_router, prefix="/api")
 
     app.add_middleware(BodyLimit, limit=MAX_BODY_BYTES)
     return app

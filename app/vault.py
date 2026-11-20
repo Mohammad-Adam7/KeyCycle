@@ -2,6 +2,8 @@
 import os
 import sqlite3
 import threading
+import hmac
+import hashlib
 
 from argon2.low_level import Type, hash_secret_raw
 from cryptography.exceptions import InvalidTag
@@ -66,6 +68,11 @@ class Vault:
             if self._master is None:
                 raise VaultLocked()
             return bytes(self._master)
+
+    def backup_auth_key(self) -> bytes:
+        """Derive a domain-separated key without exposing the vault master key."""
+        return hmac.new(self._key(), b"KeyCycle backup authentication v1",
+                        hashlib.sha256).digest()
 
     def wrap(self, plaintext_key: bytes, aad: bytes = b"") -> tuple[bytes, bytes]:
         nonce = os.urandom(12)

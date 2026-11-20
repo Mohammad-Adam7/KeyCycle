@@ -23,6 +23,9 @@ def kdf_params() -> dict:
     return KDF_FAST if os.environ.get("KEYCYCLE_FAST_KDF") == "1" else KDF_STRONG
 
 SCHEMA_VERSION = 1
+BACKUP_FORMAT = "keycycle-backup-v1"
+MAX_BACKUP_BYTES = 50 * 1024 * 1024
+MAX_BACKUP_NAME = 128
 ID_MAX = 2**63 - 1
 HARD_MAX_PLAINTEXT_BYTES = 128 * 1024
 MAX_PACKAGE_CHARS = 180_000

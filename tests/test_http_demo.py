@@ -3,7 +3,8 @@ import threading
 import uvicorn
 from app.main import create_app
 from scripts.seed_demo import seed
-from scripts.demo_part_b import demonstrate
+from scripts.demo_part_b import demonstrate as demonstrate_b
+from scripts.demo_part_c import demonstrate as demonstrate_c
 
 
 def test_real_http_demo(tmp_path):
@@ -22,7 +23,10 @@ def test_real_http_demo(tmp_path):
     thread.start()
     try:
         assert ready.wait(10)
-        demonstrate(f"http://127.0.0.1:{port}","demo-password-123","demo-passphrase-123")
+        base_url = f"http://127.0.0.1:{port}"
+        demonstrate_b(base_url,"demo-password-123","demo-passphrase-123")
+        result = demonstrate_c(base_url,"demo-password-123","demo-passphrase-123")
+        assert len(result["steps"]) == 4
     finally:
         server.should_exit=True
         thread.join(15)

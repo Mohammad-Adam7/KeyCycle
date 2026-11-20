@@ -1,6 +1,6 @@
 # KeyCycle: Cryptographic Key Lifecycle Manager
 
-KeyCycle is a training-grade web service for managing the lifecycle of cryptographic keys. Parts A and B implement authentication, the encrypted vault, controlled encryption and decryption, key versions, scheduled rotation, expiry and revocation. Basic audit recording exists; cryptographic audit chaining, backup/recovery (Part C), and the frontend/integration (Part D) remain separate work.
+KeyCycle is a training-grade web service for managing the lifecycle of cryptographic keys. Parts A, B and C implement authentication, the encrypted vault, controlled encryption and decryption, key versions, scheduled rotation, expiry and revocation, a tamper-evident audit chain, and authenticated backup and recovery. The frontend/integration work in Part D remains separate.
 
 
 ## Design principles
@@ -60,3 +60,36 @@ python -m pytest
 ```
 
 Set `KEYCYCLE_FAST_KDF=1` to use lightweight key-derivation settings for tests only. Never use it in a real deployment.
+
+## Part C: audit and recovery
+
+Every audit entry commits to its complete canonical content and the previous entry with SHA-256. The database blocks updates and deletes, and `POST /api/audit/verify` reports the first mismatch. `GET /api/audit` provides administrator-only filtering and the current chain head; verification can also compare a previously saved `expected_count` and `expected_hash` to detect truncation.
+
+Backups are stored only in the `backups/` folder beside the database. They include encrypted key versions, metadata, users with password hashes, vault parameters, settings, and the audit chain—never sessions, tokens, passphrases, plaintext, or raw keys. Each file is authenticated with HMAC-SHA-256 under a domain-separated key derived from the in-memory vault master key.
+
+Backup creation and restore use single-use confirmations:
+
+```
+POST /api/confirmations  {"action":"backup"}
+POST /api/backups        {"confirmation_token":"..."}
+
+POST /api/confirmations  {"action":"restore","backup_name":"keycycle-...kcbak"}
+POST /api/backups/{name}/restore
+{"confirmation_token":"...","passphrase":"..."}
+```
+
+A restore accepts only a listed server-side filename, verifies the HMAC and embedded audit chain before changing the database, retains an intact live audit chain, clears all sessions, and leaves the vault locked. `POST /api/recovery-drill` validates a backup in an isolated database and proves that a restored encrypted key can decrypt an authenticated recovery challenge without replacing live data.
+
+If the database file itself has been lost, recover it offline into a path that does not already exist. The passphrase is read from a masked prompt and never accepted as a command-line argument:
+
+```
+python scripts/recover_backup.py --database keycycle.db --backup keycycle-...kcbak
+```
+
+For a presentation-ready live walkthrough, start the server against a seeded demo database and run:
+
+```powershell
+python scripts/demo_part_c.py --base-url http://127.0.0.1:8000
+```
+
+The walkthrough checks the audit chain, creates and verifies an authenticated backup, runs all four recovery-drill steps, verifies the resulting chain again, and prints no credentials or key material.
