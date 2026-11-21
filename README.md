@@ -1,6 +1,6 @@
 # KeyCycle: Cryptographic Key Lifecycle Manager
 
-KeyCycle is a training-grade web service for managing the lifecycle of cryptographic keys. Parts A, B and C implement authentication, the encrypted vault, controlled encryption and decryption, key versions, scheduled rotation, expiry and revocation, a tamper-evident audit chain, and authenticated backup and recovery. The frontend/integration work in Part D remains separate.
+KeyCycle is a training-grade web service for managing the lifecycle of cryptographic keys. Parts A, B, C, and D are fully implemented, providing authentication, an encrypted master vault, controlled encryption and decryption, key versioning, scheduled and manual rotation, expiry enforcement, permanent revocation, a tamper-evident SHA-256 audit chain, authenticated backups, non-destructive recovery drills, downloadable sanitized reports, and a complete browser UI.
 
 
 ## Design principles
@@ -93,3 +93,47 @@ python scripts/demo_part_c.py --base-url http://127.0.0.1:8000
 ```
 
 The walkthrough checks the audit chain, creates and verifies an authenticated backup, runs all four recovery-drill steps, verifies the resulting chain again, and prints no credentials or key material.
+
+## Part D: Frontend, Reports and Evaluation Suite
+
+Part D delivers the browser user interface, report export subsystem, and cross-module security evaluation suite:
+
+### 1. Browser Interface (Midnight Navy + Electric Cyan)
+
+A fully self-contained, zero-dependency browser application compliant with strict Content-Security-Policy (`default-src 'self'`). It covers all wireframe screens from Section 5 of the design specification:
+
+- **Sign-in & One-Time Setup (5.3)**: Initial setup handler with automatic credential transfer to prevent sign-in typos, masked inputs, and session timeout indicators.
+- **Dashboard (5.4)**: In-memory vault status indicator with lock/unlock toggle, live audit chain head counter, verification status, and key metrics.
+- **Key Management (5.5 & 5.6)**: Key catalog with active/expired/revoked state badges, version inspection modal, manual rotation with single-use confirmation, and permanent revocation dialog requiring reason and typed confirmation.
+- **Encrypt and Decrypt (5.7)**: Role-restricted key selector, real-time byte size counter against the 64 KiB limit, `kc1` wire format package output, and explainable decision badges (rule name and version, decision outcome, key ID/version, duration).
+- **Audit Log & Integrity Verification (5.8)**: Full audit trail with action/outcome filters, live chain verification, and prominent pulsing red alert banner upon tamper detection.
+- **Backups, Recovery Drill & Reports (5.9)**: List of server-stored `.kcbak` files with byte sizes, HMAC verification, 4-step non-destructive recovery drill runner, and role-sanitized report exports.
+- **Administration (5.10)**: User management with enable/disable toggles, user creation modal, security threshold viewer, and rule version patcher.
+
+To launch the web interface:
+```bash
+uvicorn app.main:create_app --factory --reload
+```
+Navigate to `http://127.0.0.1:8000/`.
+
+### 2. Report Export Subsystem
+
+`GET /api/reports/export?format=csv|json` provides downloadable reports stamped with generation time, audit chain count, and chain head hash:
+- **Administrator**: Full records including keys, versions, users, settings, and complete audit events with details.
+- **Operator**: Key information and own audit events only.
+- **Viewer**: Key catalog and decision outcomes without usernames, roles, or internal details.
+
+### 3. Evaluation Test Suite: T1 to T6 and T-final
+
+Run the complete 124-test suite:
+```bash
+KEYCYCLE_FAST_KDF=1 python -m pytest
+```
+Covers:
+- **T1**: Wrong passphrase lockout defense.
+- **T2**: Role-based access control and purpose separation.
+- **T3**: Rotation compatibility (retired versions remain decryptable) and AAD binding.
+- **T4**: Expired key encryption refusal and permanent revocation refusal.
+- **T5**: Cryptographic audit hash verification and first-mismatch tamper detection.
+- **T6**: Authenticated backup verification and 4-step recovery drill.
+- **T-final**: Acceptance testing (payload size limits, CSRF protection, single-use confirmation replay prevention, safe failure formatting).

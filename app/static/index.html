@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KeyCycle — Cryptographic Key Lifecycle Manager</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+  <!-- Top Navigation Header -->
+  <header>
+    <div class="brand">
+      <div class="brand-icon">KC</div>
+      <div class="brand-title">Key<span>Cycle</span></div>
+    </div>
+
+    <nav id="main-nav" style="display: none;">
+      <button class="nav-btn active" data-view="dashboard">Dashboard</button>
+      <button class="nav-btn" data-view="keys">Keys</button>
+      <button class="nav-btn" data-view="crypto" id="nav-crypto">Crypto</button>
+      <button class="nav-btn" data-view="audit" id="nav-audit">Audit</button>
+      <button class="nav-btn" data-view="backup" id="nav-backup">Backups &amp; Reports</button>
+      <button class="nav-btn" data-view="admin" id="nav-admin">Administration</button>
+    </nav>
+
+    <div class="header-controls">
+      <div id="vault-pill" class="vault-pill locked" title="Click to toggle vault lock state" style="display: none;">
+        <span class="vault-dot">●</span> <span id="vault-text">VAULT: LOCKED</span>
+      </div>
+      <div id="user-badge" class="user-badge" style="display: none;">
+        <span id="user-name">user</span> <span id="user-role" class="role-tag">ROLE</span>
+      </div>
+      <button id="btn-signout" class="btn btn-secondary btn-sm" style="display: none;">Sign Out</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- Screen 5.3: Sign-In / Setup View -->
+    <section id="view-auth" class="view-panel active">
+      <div style="max-width: 440px; margin: 3rem auto;">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><span class="icon">⬢</span> <span id="auth-title">Authentication</span></div>
+          </div>
+
+          <div id="auth-error" class="badge state-revoked" style="display: none; width: 100%; margin-bottom: 1rem; text-align: center; padding: 0.5rem;"></div>
+
+          <!-- Sign-In Form -->
+          <form id="form-login">
+            <div class="form-group">
+              <label for="login-username">Username</label>
+              <input type="text" id="login-username" required autocomplete="username">
+            </div>
+            <div class="form-group">
+              <label for="login-password">Password</label>
+              <input type="password" id="login-password" required autocomplete="current-password">
+              <div class="hint">12-character minimum. Inactivity limit: 30 minutes.</div>
+            </div>
+            <button type="submit" class="btn btn-primary" style="width: 100%;">Sign In</button>
+          </form>
+
+          <!-- First Run Setup Toggle -->
+          <div style="margin-top: 1.5rem; text-align: center; border-top: 1px solid var(--border-subtle); padding-top: 1rem;">
+            <button id="toggle-setup" class="btn btn-secondary btn-sm">First time setup?</button>
+          </div>
+
+          <!-- First Run Setup Form -->
+          <form id="form-setup" style="display: none; margin-top: 1rem;">
+            <div class="form-group">
+              <label for="setup-username">Initial Administrator</label>
+              <input type="text" id="setup-username" required>
+            </div>
+            <div class="form-group">
+              <label for="setup-password">Admin Password (≥12 chars)</label>
+              <input type="password" id="setup-password" required minlength="12">
+            </div>
+            <div class="form-group">
+              <label for="setup-passphrase">Vault Passphrase (≥12 chars)</label>
+              <input type="password" id="setup-passphrase" required minlength="12">
+              <div class="hint">Master key derivation passphrase. Keep safely; unrecoverable if lost.</div>
+            </div>
+            <button type="submit" class="btn btn-primary" style="width: 100%;">Initialize Service</button>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <!-- Screen 5.4: Dashboard View -->
+    <section id="view-dashboard" class="view-panel">
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><span class="icon">🔒</span> Master Vault Status</div>
+            <button id="btn-dash-vault" class="btn btn-secondary btn-sm">Toggle Lock</button>
+          </div>
+          <p style="color: var(--text-muted); margin-bottom: 0.75rem;">
+            Data encryption and key wrapping operations require the vault master key in memory.
+          </p>
+          <div>
+            Current Status: <span id="dash-vault-status" class="badge state-revoked">LOCKED</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><span class="icon">⛓</span> Live Audit Chain Head</div>
+            <button id="btn-dash-verify" class="btn btn-primary btn-sm">Verify Chain</button>
+          </div>
+          <div style="font-size: 0.85rem; line-height: 1.8;">
+            <div>Entries Committed: <span id="dash-chain-count" class="mono" style="color: var(--cyan-primary);">0</span></div>
+            <div>Latest Head Hash: <div id="dash-chain-hash" class="mono truncate" style="color: var(--text-muted);">0000...</div></div>
+            <div>Verification: <span id="dash-verify-badge" class="badge state-active">UNVERIFIED</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Metrics -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
+        <div class="card" style="text-align: center;">
+          <div style="color: var(--text-dim); font-size: 0.75rem; text-transform: uppercase;">Active Keys</div>
+          <div id="stat-active-keys" style="font-size: 1.8rem; font-weight: 700; color: var(--cyan-primary);">0</div>
+        </div>
+        <div class="card" style="text-align: center;">
+          <div style="color: var(--text-dim); font-size: 0.75rem; text-transform: uppercase;">Expired Keys</div>
+          <div id="stat-expired-keys" style="font-size: 1.8rem; font-weight: 700; color: #fbbf24;">0</div>
+        </div>
+        <div class="card" style="text-align: center;">
+          <div style="color: var(--text-dim); font-size: 0.75rem; text-transform: uppercase;">Revoked Keys</div>
+          <div id="stat-revoked-keys" style="font-size: 1.8rem; font-weight: 700; color: #f43f5e;">0</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><span class="icon">⚡</span> Quick Actions</div>
+        </div>
+        <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+          <button class="btn btn-secondary" data-action="show-view" data-view="crypto">Data Encryption &amp; Decryption</button>
+          <button class="btn btn-secondary" data-action="show-view" data-view="keys">Key Catalog</button>
+          <button class="btn btn-secondary" data-action="show-view" data-view="backup">Download Security Report</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Screen 5.5: Key Management View -->
+    <section id="view-keys" class="view-panel">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><span class="icon">🔑</span> Cryptographic Keys</div>
+          <button id="btn-create-key-modal" class="btn btn-primary btn-sm" style="display: none;">+ Create Key</button>
+        </div>
+
+        <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+          <select id="keys-filter-state" style="width: auto;">
+            <option value="">All States</option>
+            <option value="active">Active</option>
+            <option value="expired">Expired</option>
+            <option value="revoked">Revoked</option>
+          </select>
+          <select id="keys-filter-purpose" style="width: auto;">
+            <option value="">All Purposes</option>
+            <option value="standard">Standard</option>
+            <option value="test">Test</option>
+          </select>
+          <button id="btn-refresh-keys" class="btn btn-secondary btn-sm">Refresh</button>
+        </div>
+
+        <div class="table-container">
+          <table id="table-keys">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Purpose</th>
+                <th>State</th>
+                <th>Current Version</th>
+                <th>Rotation Period</th>
+                <th>Created</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td colspan="8" style="text-align: center; color: var(--text-dim);">Loading keys...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Screen 5.7: Encrypt & Decrypt View -->
+    <section id="view-crypto" class="view-panel">
+      <div class="grid-2">
+        <!-- Encrypt Card -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><span class="icon">🔐</span> Encrypt Plaintext</div>
+          </div>
+          <form id="form-encrypt">
+            <div class="form-group">
+              <label for="encrypt-key-id">Select Active Key</label>
+              <select id="encrypt-key-id" required>
+                <option value="">Select a key...</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                <label for="encrypt-plaintext">Plaintext</label>
+                <span id="encrypt-size-counter" class="hint mono">0 / 65536 bytes</span>
+              </div>
+              <textarea id="encrypt-plaintext" rows="4" placeholder="Enter sensitive plaintext data to encrypt..." required></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary" style="width: 100%;">Encrypt Data</button>
+          </form>
+
+          <div id="encrypt-result" style="display: none; margin-top: 1rem;">
+            <label>Generated Ciphertext Package (kc1)</label>
+            <div id="encrypt-package" class="mono" style="background: var(--bg-input); padding: 0.75rem; border: 1px solid var(--cyan-primary); border-radius: var(--radius-sm); word-break: break-all; color: var(--cyan-primary); font-size: 0.8rem;"></div>
+          </div>
+        </div>
+
+        <!-- Decrypt Card -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><span class="icon">🔓</span> Decrypt Package</div>
+          </div>
+          <form id="form-decrypt">
+            <div class="form-group">
+              <label for="decrypt-package-input">Ciphertext Package (kc1)</label>
+              <textarea id="decrypt-package-input" rows="4" placeholder="kc1.key_id.version.nonce.ciphertext" required></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary" style="width: 100%;">Decrypt Package</button>
+          </form>
+
+          <div id="decrypt-result" style="display: none; margin-top: 1rem;">
+            <label>Decrypted Plaintext</label>
+            <div id="decrypt-plaintext" class="mono" style="background: var(--bg-input); padding: 0.75rem; border: 1px solid #10b981; border-radius: var(--radius-sm); color: #10b981; font-size: 0.85rem; white-space: pre-wrap;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Decision Badge & Evidence Section -->
+      <div id="crypto-decision-panel" class="decision-card" style="display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div style="font-weight: 700; color: var(--cyan-primary);">DECISION &amp; RULE AUDIT BADGE</div>
+          <span id="decision-severity" class="badge sev-info">INFO</span>
+        </div>
+        <div class="decision-grid">
+          <div class="decision-item"><span>Rule Applied</span><strong id="decision-rule">-</strong></div>
+          <div class="decision-item"><span>Outcome</span><strong id="decision-outcome">-</strong></div>
+          <div class="decision-item"><span>Key ID / Version</span><strong id="decision-key">-</strong></div>
+          <div class="decision-item"><span>Duration</span><strong id="decision-duration">-</strong></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Screen 5.8: Audit Log View (Admin) -->
+    <section id="view-audit" class="view-panel">
+      <!-- Tamper Alert Banner -->
+      <div id="audit-tamper-banner" class="tamper-alert" style="display: none;">
+        <div style="font-size: 1.5rem;">⚠️</div>
+        <div>
+          <div style="font-weight: 700; font-size: 1rem;">TAMPER DETECTED IN AUDIT CHAIN</div>
+          <div id="audit-tamper-detail" style="font-size: 0.85rem;">The cryptographic hash link failed verification.</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><span class="icon">📜</span> Cryptographic Audit Trail</div>
+          <div style="display: flex; gap: 0.5rem;">
+            <button id="btn-verify-audit-full" class="btn btn-primary btn-sm">Re-verify Entire Chain</button>
+            <button id="btn-refresh-audit" class="btn btn-secondary btn-sm">Refresh</button>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap;">
+          <input type="text" id="audit-filter-user" placeholder="Filter User..." style="width: 140px;">
+          <input type="text" id="audit-filter-action" placeholder="Filter Action..." style="width: 140px;">
+          <select id="audit-filter-outcome" style="width: auto;">
+            <option value="">All Outcomes</option>
+            <option value="success">Success</option>
+            <option value="denied">Denied</option>
+            <option value="failure">Failure</option>
+          </select>
+          <select id="audit-filter-severity" style="width: auto;">
+            <option value="">All Severities</option>
+            <option value="info">Info</option>
+            <option value="warning">Warning</option>
+            <option value="critical">Critical</option>
+          </select>
+        </div>
+
+        <div class="table-container">
+          <table id="table-audit">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Time (UTC)</th>
+                <th>User (Role)</th>
+                <th>Action</th>
+                <th>Target</th>
+                <th>Outcome</th>
+                <th>Severity</th>
+                <th>Duration</th>
+                <th>Hash</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td colspan="9" style="text-align: center; color: var(--text-dim);">Loading audit events...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Screen 5.9: Backup, Recovery & Reports View -->
+    <section id="view-backup" class="view-panel">
+      <!-- Section 1: Authenticated Backups -->
+      <div class="card" id="card-backups-admin" style="display: none;">
+        <div class="card-header">
+          <div class="card-title"><span class="icon">💾</span> Authenticated Database Backups</div>
+          <button id="btn-create-backup" class="btn btn-primary btn-sm">+ Create Backup</button>
+        </div>
+        <p style="color: var(--text-muted); margin-bottom: 1rem; font-size: 0.85rem;">
+          Backups are HMAC-SHA256 authenticated using the master vault key and saved to the restricted server storage folder.
+        </p>
+        <div class="table-container">
+          <table id="table-backups">
+            <thead>
+              <tr>
+                <th>Backup Filename</th>
+                <th>Size (Bytes)</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td colspan="3" style="text-align: center; color: var(--text-dim);">No backups found.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Section 2: Recovery Drill -->
+      <div class="card" id="card-drill-admin" style="display: none;">
+        <div class="card-header">
+          <div class="card-title"><span class="icon">🧪</span> Non-Destructive Recovery Drill</div>
+        </div>
+        <p style="color: var(--text-muted); margin-bottom: 1rem; font-size: 0.85rem;">
+          Exercises full reconstruction in an isolated SQLite database and authenticates a challenge without disturbing the live database.
+        </p>
+        <form id="form-drill" style="display: flex; gap: 0.5rem; align-items: flex-end; margin-bottom: 1rem;">
+          <div style="flex: 1;">
+            <label for="drill-backup-select">Select Target Backup</label>
+            <select id="drill-backup-select" required></select>
+          </div>
+          <div style="flex: 1;">
+            <label for="drill-passphrase">Vault Passphrase</label>
+            <input type="password" id="drill-passphrase" required placeholder="Master passphrase...">
+          </div>
+          <button type="submit" class="btn btn-primary">Execute Drill</button>
+        </form>
+
+        <div id="drill-results-grid" style="display: none; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.75rem;"></div>
+      </div>
+
+      <!-- Section 3: Reports & Exports -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><span class="icon">📊</span> Security &amp; Lifecycle Reports</div>
+        </div>
+        <p style="color: var(--text-muted); margin-bottom: 1rem; font-size: 0.85rem;">
+          Export structured reports stamped with generation timestamp and the live audit chain head. Content is automatically sanitized according to your role permissions.
+        </p>
+        <div style="display: flex; gap: 1rem;">
+          <a id="btn-export-json" href="/api/reports/export?format=json" class="btn btn-primary" download>Download JSON Report</a>
+          <a id="btn-export-csv" href="/api/reports/export?format=csv" class="btn btn-secondary" download>Download CSV Report</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Screen 5.10: Administration View (Admin) -->
+    <section id="view-admin" class="view-panel">
+      <div class="grid-2">
+        <!-- Users Management -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><span class="icon">👥</span> Users &amp; Roles</div>
+            <button id="btn-add-user-modal" class="btn btn-primary btn-sm">+ Add User</button>
+          </div>
+          <div class="table-container">
+            <table id="table-users">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Username</th>
+                  <th>Role</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td colspan="5" style="text-align: center; color: var(--text-dim);">Loading users...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- System Settings & Thresholds -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><span class="icon">⚙️</span> Security Settings &amp; Rule Versions</div>
+          </div>
+          <div class="table-container">
+            <table id="table-settings">
+              <thead>
+                <tr>
+                  <th>Setting</th>
+                  <th>Value</th>
+                  <th>Range</th>
+                  <th>Rule Ver.</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td colspan="5" style="text-align: center; color: var(--text-dim);">Loading settings...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Modals -->
+
+  <!-- Modal: Unlock Vault -->
+  <div id="modal-unlock" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="card-title">Unlock Master Vault</div>
+        <button class="btn btn-secondary btn-sm" data-action="close-modal" data-modal-id="modal-unlock">✕</button>
+      </div>
+      <form id="form-unlock">
+        <div class="form-group">
+          <label for="unlock-passphrase">Vault Passphrase</label>
+          <input type="password" id="unlock-passphrase" required autofocus>
+          <div class="hint">Derives master key into server memory. Locked out after repeated failures.</div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-action="close-modal" data-modal-id="modal-unlock">Cancel</button>
+          <button type="submit" class="btn btn-primary">Unlock Vault</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Create Key -->
+  <div id="modal-create-key" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="card-title">Create New Cryptographic Key</div>
+        <button class="btn btn-secondary btn-sm" data-action="close-modal" data-modal-id="modal-create-key">✕</button>
+      </div>
+      <form id="form-create-key">
+        <div class="form-group">
+          <label for="new-key-name">Key Name</label>
+          <input type="text" id="new-key-name" required pattern="[A-Za-z0-9_-]{1,64}">
+        </div>
+        <div class="form-group">
+          <label for="new-key-purpose">Purpose</label>
+          <select id="new-key-purpose">
+            <option value="standard">Standard (Operators)</option>
+            <option value="test">Test (Administrators)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="new-key-rotation">Rotation Period (Days)</label>
+          <input type="number" id="new-key-rotation" value="90" min="1" max="730">
+        </div>
+        <div class="form-group">
+          <label for="new-key-expiry">Optional Expiry Date (UTC)</label>
+          <input type="datetime-local" id="new-key-expiry">
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-action="close-modal" data-modal-id="modal-create-key">Cancel</button>
+          <button type="submit" class="btn btn-primary">Create Key</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Key Details & Versions -->
+  <div id="modal-key-details" class="modal-overlay">
+    <div class="modal" style="max-width: 640px;">
+      <div class="modal-header">
+        <div class="card-title" id="details-modal-title">Key Details</div>
+        <button class="btn btn-secondary btn-sm" data-action="close-modal" data-modal-id="modal-key-details">✕</button>
+      </div>
+      <div id="details-modal-body" style="font-size: 0.85rem; line-height: 1.6;">
+        <!-- Filled dynamically -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-action="close-modal" data-modal-id="modal-key-details">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Revocation Confirmation (Section 5.6) -->
+  <div id="modal-revoke" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="card-title" style="color: #f43f5e;">⚠️ Confirm Key Revocation</div>
+        <button class="btn btn-secondary btn-sm" data-action="close-modal" data-modal-id="modal-revoke">✕</button>
+      </div>
+      <form id="form-revoke">
+        <p style="color: #f43f5e; font-size: 0.85rem; margin-bottom: 1rem; border: 1px solid #f43f5e; padding: 0.5rem; border-radius: var(--radius-sm);">
+          <strong>WARNING:</strong> Revocation is permanent and applies to all past and present versions of this key. Any data encrypted under this key will become permanently undecryptable.
+        </p>
+        <div class="form-group">
+          <label>Target Key</label>
+          <input type="text" id="revoke-target-name" readonly style="opacity: 0.7;">
+        </div>
+        <div class="form-group">
+          <label for="revoke-reason">Revocation Reason (Required)</label>
+          <input type="text" id="revoke-reason" required maxlength="200" placeholder="e.g. Compromise suspected or decommissioning">
+        </div>
+        <div class="form-group">
+          <label for="revoke-confirm-input">Type key name to confirm</label>
+          <input type="text" id="revoke-confirm-input" required placeholder="Type exact key name...">
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-action="close-modal" data-modal-id="modal-revoke">Cancel</button>
+          <button type="submit" class="btn btn-danger">Permanently Revoke</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Add User -->
+  <div id="modal-add-user" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="card-title">Add User Account</div>
+        <button class="btn btn-secondary btn-sm" data-action="close-modal" data-modal-id="modal-add-user">✕</button>
+      </div>
+      <form id="form-add-user">
+        <div class="form-group">
+          <label for="add-username">Username</label>
+          <input type="text" id="add-username" required minlength="3" maxlength="32">
+        </div>
+        <div class="form-group">
+          <label for="add-password">Password (≥12 chars)</label>
+          <input type="password" id="add-password" required minlength="12">
+        </div>
+        <div class="form-group">
+          <label for="add-role">Role</label>
+          <select id="add-role">
+            <option value="operator">Operator</option>
+            <option value="viewer">Viewer</option>
+            <option value="administrator">Administrator</option>
+          </select>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-action="close-modal" data-modal-id="modal-add-user">Cancel</button>
+          <button type="submit" class="btn btn-primary">Create Account</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Edit Setting -->
+  <div id="modal-edit-setting" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="card-title">Update Security Threshold</div>
+        <button class="btn btn-secondary btn-sm" data-action="close-modal" data-modal-id="modal-edit-setting">✕</button>
+      </div>
+      <form id="form-edit-setting">
+        <input type="hidden" id="edit-setting-name">
+        <div class="form-group">
+          <label id="edit-setting-label">Setting</label>
+          <input type="number" id="edit-setting-value" required>
+          <div id="edit-setting-hint" class="hint">Allowed range: ...</div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-action="close-modal" data-modal-id="modal-edit-setting">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Change</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

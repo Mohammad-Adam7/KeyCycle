@@ -23,6 +23,10 @@ from .audit_routes import router as audit_router
 from .backup import Store as BackupStore
 from .backup_routes import router as backup_router
 from .maintenance import MaintenanceBarrier
+from .report_routes import router as report_router
+from .ui_routes import router as ui_router
+from fastapi.staticfiles import StaticFiles
+from pathlib import Path
 
 LOGIN_PER_MINUTE_PER_ADDRESS = 20
 
@@ -272,6 +276,12 @@ def create_app(db_path: str | None = None, *, scheduler_interval: float = 30.0) 
     app.include_router(key_router, prefix="/api")
     app.include_router(audit_router, prefix="/api")
     app.include_router(backup_router, prefix="/api")
+    app.include_router(report_router, prefix="/api")
+    app.include_router(report_router)
+
+    static_dir = Path(__file__).resolve().parent / "static"
+    app.mount("/static", StaticFiles(directory=static_dir), name="static")
+    app.include_router(ui_router)
 
     app.add_middleware(BodyLimit, limit=MAX_BODY_BYTES)
     return app
