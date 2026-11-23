@@ -45,3 +45,8 @@ def backup_view():
 @router.get("/admin")
 def admin_view():
     return FileResponse(INDEX_HTML)
+
+
+@router.get("/history")
+def history_view():
+    return FileResponse(INDEX_HTML)

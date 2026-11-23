@@ -40,11 +40,12 @@ Demo users: `admin`, `operator1`, `operator2`, `viewer`, and `trainee` (disabled
 ```bash
 KEYCYCLE_DB=demo/demo.db python3 -m uvicorn app.main:create_app --factory --port 8000
 ```
-Open <http://127.0.0.1:8000>. Sign in, then unlock the vault (Dashboard → Vault) with the passphrase.
+Open <http://127.0.0.1:8000>. The overview page tells KeyCycle’s story; press **Sign in** (top right), or go straight to
+<http://127.0.0.1:8000/login>. After signing in, press **Unlock vault** on the dashboard and enter the passphrase.
 Run **one** worker only (rate limits, lockouts and the unlocked vault key live in process memory).
 
 ### Starting with an empty database instead
-Leave `KEYCYCLE_DB` unset (creates `keycycle.db`), open the page, choose **First time setup?**, and create
+Leave `KEYCYCLE_DB` unset (creates `keycycle.db`), open <http://127.0.0.1:8000/login>, choose **First-time setup**, and create
 the first administrator. Setup works exactly once; afterwards it is refused and the refusal is audited.
 The same form asks for the vault passphrase (12+ characters), which creates the vault. Write the passphrase
 down – it cannot be recovered or reset. After setup the vault is locked; sign in and unlock it.
@@ -70,7 +71,9 @@ Full procedure: `doc/ADMIN_GUIDE.md`, section 6.
 
 ## 7. Layout
 ```
-app/        FastAPI application (main.py, auth, vault, key_service, audit, backup, reports, static UI)
+app/        FastAPI application (main.py, auth, vault, key_service, audit, backup, reports)
+app/static/ index.html; app.js (signed-in app), landing.js (overview page), kc3d.js (3D helpers),
+            style.css, landing.css; vendor/ (three.js, GSAP) and fonts/, served locally, no CDN
 schema.sql  database schema and the audit-log triggers
 scripts/    seed_demo.py, recover_backup.py, evidence_pack.py, capture_screenshots.py, demo_part_*.py
 tests/      pytest suite
@@ -85,3 +88,5 @@ doc/        USER_GUIDE.md, ADMIN_GUIDE.md, DEMO_SCRIPT.md
 - The audit chain is unkeyed: an attacker with file access can rewrite it end-to-end. Keep a remembered chain head (the UI stores one in the browser; backups carry one) and verify against it.
 - A restore returns the vault to the backup's moment: keys created afterwards are lost. Revocations and disabled users are never undone by a restore.
 - Repeated failed logins can lock an account for a while (a deliberate trade-off).
+- The interface’s 3D and motion need WebGL and a graphics card to run smoothly. Without WebGL it skips the
+  overview page and the 3D pieces and still works; with the system’s “reduce motion” setting on, it shows still screens.

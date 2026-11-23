@@ -4,8 +4,9 @@ Optional tool (not needed to run KeyCycle):
     pip install playwright && playwright install chromium
     python3 scripts/capture_screenshots.py
 
-Writes evidence/screenshots/*.png and evidence/screenshots/dialogs.txt (the text of browser
-pop-ups, which screenshots cannot show). Nothing here touches your own database."""
+Writes evidence/screenshots/*.png and evidence/screenshots/dialogs.txt (API refusals that a
+screenshot cannot show). Captures run with reduced motion so every screen is settled. Nothing here
+touches your own database."""
 import os
 import socket
 import sqlite3
@@ -53,11 +54,13 @@ def main():
         dialogs = []
         with sync_playwright() as p:
             browser = p.chromium.launch()
-            page = browser.new_page(viewport={"width": 1280, "height": 860})
-            page.on("dialog", lambda d: (dialogs.append(d.message), d.accept()))
+            # Reduced motion: the interface skips its transitions, so every capture is of a settled screen.
+            context = browser.new_context(viewport={"width": 1280, "height": 860}, reduced_motion="reduce")
+            page = context.new_page()
+            page.set_default_timeout(120000)   # software-rendered browsers build the 3D lighting slowly
 
             def shot(name, note=""):
-                page.wait_for_timeout(500)
+                page.wait_for_timeout(600)
                 page.screenshot(path=str(OUT / f"{name}.png"))
                 print("captured", name, note)
 
@@ -70,118 +73,133 @@ def main():
                         return {status: r.status, body: await r.json().catch(() => null)};
                     }""", [method, path, body])
 
-            def login(user, password=PW):
-                page.goto(base)
-                page.wait_for_selector("#form-login")
+            def login(user, password=PW, ok=True):
+                page.goto(base + "/login")
+                page.wait_for_selector("#auth-submit:not([disabled])")
+                page.wait_for_timeout(300)
                 page.fill("#login-username", user)
                 page.fill("#login-password", password)
-                page.click("#form-login button[type=submit]")
+                page.click("#auth-submit")
+                if ok:
+                    try:
+                        page.wait_for_selector("#app:not([hidden])")
+                    except Exception:
+                        print("sign-in failed:", page.inner_text("#auth-error"))
+                        raise
+                    page.wait_for_timeout(800)
 
             def logout():
-                page.click("#btn-signout")
-                page.wait_for_selector("#form-login")
+                api("POST", "/api/auth/logout")
 
             def go(view):
-                page.click(f"button.nav-btn[data-view={view}]")
-                page.wait_for_timeout(700)
+                page.click(f"#nav-{view}")
+                page.wait_for_timeout(900)
 
-            # 1. failed login: generic message
-            login("admin", "wrong-password-1")
-            page.wait_for_selector("#auth-error:visible")
+            def wait_until(js, timeout=30):
+                # polled with evaluate: wait_for_function would need eval, which the CSP forbids
+                for _ in range(int(timeout * 5)):
+                    if page.evaluate(js):
+                        return
+                    page.wait_for_timeout(200)
+                raise TimeoutError(js)
+
+            def dialog_fill(value):
+                page.wait_for_selector(".dlg input[type=password]")
+                page.fill(".dlg input[type=password]", value)
+                page.click(".dlg button[type=submit]")
+
+            # 1. failed sign-in: generic message
+            login("admin", "wrong-password-1", ok=False)
+            wait_until("document.querySelector('#auth-error').textContent.length > 0")
             shot("01-login-failed-generic-message")
             # 2. admin dashboard, vault locked
             login("admin")
-            page.wait_for_selector("#user-name")
             shot("02-dashboard-admin-vault-locked")
             # 3. wrong passphrase
-            page.click("#btn-dash-vault")
-            page.fill("#unlock-passphrase", "wrong-passphrase-123")
-            page.click("#form-unlock button[type=submit]")
-            page.wait_for_timeout(800)
+            page.click("#vault-btn")
+            dialog_fill("wrong-passphrase-123")
+            wait_until("document.querySelector('.dlg .err') && document.querySelector('.dlg .err').textContent.length > 0")
             shot("03-vault-wrong-passphrase")
             # 4. correct passphrase
-            page.fill("#unlock-passphrase", PW)
-            page.click("#form-unlock button[type=submit]")
+            page.fill(".dlg input[type=password]", PW)
+            page.click(".dlg button[type=submit]")
+            page.wait_for_selector(".dlg", state="detached")
             page.wait_for_timeout(800)
-            page.reload()
-            page.wait_for_selector("#user-name")
             shot("04-vault-unlocked")
             # 5. keys with active / expired / revoked states
             go("keys")
+            page.wait_for_selector("#keys-body tr.k")
             shot("05-keys-states")
             # 6. password dialog
             page.click("#btn-password")
-            page.wait_for_selector("#modal-password.active")
+            page.wait_for_selector(".dlg")
             shot("06-change-password-dialog")
-            page.click("#modal-password [data-action=close-modal]")
+            page.keyboard.press("Escape")
+            page.wait_for_selector(".dlg", state="detached")
             # 7. backup + recovery drill (admin)
             tok = api("POST", "/api/confirmations", {"action": "backup"})["body"]["data"]["confirmation_token"]
             name = api("POST", "/api/backups", {"confirmation_token": tok})["body"]["data"]["name"]
             go("backup")
+            page.wait_for_selector(f'#bk-list li[data-name="{name}"]')
             shot("07-backups-list")
-            page.select_option("#drill-backup-select", name)
-            page.fill("#drill-passphrase", PW)
-            page.click("#form-drill button[type=submit]")
-            page.wait_for_timeout(2500)
+            page.click(f'#bk-list li[data-name="{name}"] button[data-act=drill]')
+            dialog_fill(PW)
+            wait_until("document.querySelectorAll('#drill li.on').length === 4")
             shot("08-recovery-drill-results")
             go("admin")
+            page.wait_for_selector("#settings li[data-name]")
             shot("09-administration-users-settings")
             # prepare a revoked-key package for the operator screen
             logout()
             login("operator1")
-            page.wait_for_selector("#user-name")
             old = api("POST", "/api/crypto/encrypt", {"key_id": fixtures["keys"]["backup-key"], "data": "revoked-key demo"})["body"]["data"]["package"]
             logout()
             login("admin")
-            page.wait_for_selector("#user-name")
             kid = fixtures["keys"]["backup-key"]
             tok = api("POST", "/api/confirmations", {"action": "revoke", "key_id": kid})["body"]["data"]["confirmation_token"]
             api("POST", f"/api/keys/{kid}/revoke", {"confirmation_token": tok, "reason": "screenshot demo", "confirm_name": "backup-key"})
             logout()
-            # 8. operator: allowed encrypt, tampered package, revoked key
+            # 8. operator: allowed encrypt, tampered package, revoked key, retired version
             login("operator1")
-            page.wait_for_selector("#user-name")
             go("crypto")
-            page.select_option("#encrypt-key-id", str(fixtures["keys"]["finance-key"]))
-            page.fill("#encrypt-plaintext", "Synthetic payroll record")
-            page.click("#form-encrypt button[type=submit]")
-            page.wait_for_selector("#encrypt-result:visible")
+            page.wait_for_selector("#pick-btn:not([disabled])")
+            page.click("#pick-btn")
+            page.click(f'#pick-list li[data-id="{fixtures["keys"]["finance-key"]}"]')
+            page.fill("#enc-data", "Synthetic payroll record")
+            page.click("#enc-go")
+            page.wait_for_selector("#enc-out .pkg")
             shot("10-operator-encrypt-allowed")
-            page.fill("#decrypt-package-input", fixtures["altered_ciphertext"])
-            page.click("#form-decrypt button[type=submit]")
-            page.wait_for_timeout(900)
-            shot("11-decrypt-tampered-package-denied")
-            page.fill("#decrypt-package-input", old)
-            page.click("#form-decrypt button[type=submit]")
-            page.wait_for_timeout(900)
-            shot("12-decrypt-revoked-key-denied")
-            page.fill("#decrypt-package-input", fixtures["retired_version_package"])
-            page.click("#form-decrypt button[type=submit]")
-            page.wait_for_timeout(900)
-            shot("13-decrypt-old-version-after-rotation")
+
+            def decrypt(package, name):
+                page.fill("#dec-pkg", package)
+                page.click("#dec-go")
+                page.wait_for_selector("#dec-out .decision")
+                shot(name)
+            decrypt(fixtures["altered_ciphertext"], "11-decrypt-tampered-package-denied")
+            decrypt(old, "12-decrypt-revoked-key-denied")
+            decrypt(fixtures["retired_version_package"], "13-decrypt-old-version-after-rotation")
             logout()
             # 9. viewer: limited navigation
             login("viewer")
-            page.wait_for_selector("#user-name")
             shot("14-viewer-limited-navigation")
             denied = api("POST", "/api/crypto/encrypt", {"key_id": 2, "data": "x"})
             dialogs.append(f"viewer POST /api/crypto/encrypt -> HTTP {denied['status']} {denied['body']}")
             logout()
             # 10. audit log, then tamper and verify
             login("admin")
-            page.wait_for_selector("#user-name")
             go("audit")
+            page.wait_for_selector("#entries li[data-entry]")
             shot("15-audit-log")
-            page.click("#btn-verify-audit-full")
-            page.wait_for_timeout(900)
+            page.click("#audit-verify")
+            page.wait_for_selector("#entries li.ok")
             shot("16-audit-chain-verified")
             con = sqlite3.connect(db)
             con.execute("DROP TRIGGER audit_no_update")
             con.execute("UPDATE audit_events SET reason='tampered' WHERE entry_no=3")
             con.commit()
             con.close()
-            page.click("#btn-verify-audit-full")
-            page.wait_for_selector("#audit-tamper-banner:visible", timeout=8000)
+            page.click("#audit-verify")
+            page.wait_for_selector("#tamper .tamper", timeout=8000)
             shot("17-audit-tamper-detected")
             browser.close()
         (OUT / "dialogs.txt").write_text("\n".join(f"- {m}" for m in dialogs) + "\n")
