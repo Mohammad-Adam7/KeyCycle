@@ -1,0 +1,12 @@
+- Unlock failed: Unlock failed.
+- Vault unlocked successfully.
+- Recovery Drill Completed Successfully!
+- Decryption failed: The ciphertext is not valid.
+- Decryption failed: The key has been revoked.
+- viewer POST /api/crypto/encrypt -> HTTP 403 {'code': 'FORBIDDEN', 'message': 'You do not have permission to do this.', 'audit_entry': 39}
+- Audit Chain Verified!
+Total Entries: 41
+Chain Head: 58baeb9b20fdd0e1133c8ff08e68a15df04d0cd8a44229b7e3638c5963719241
+Checked against: backup:keycycle-20261122T035511Z-13f6f729.kcbak
+- AUDIT VERIFICATION FAILED!
+Tampering detected: The audit log failed verification.

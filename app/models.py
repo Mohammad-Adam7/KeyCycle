@@ -47,6 +47,11 @@ class SettingPatch(Strict):
     value: int
 
 
+class PasswordChangeIn(Strict):
+    current_password: str = Field(min_length=1, max_length=PASSWORD_MAX)
+    new_password: str = Field(min_length=PASSWORD_MIN, max_length=PASSWORD_MAX)
+
+
 # Part B uses strict types without changing A's request contract.
 import unicodedata
 from pydantic import field_validator

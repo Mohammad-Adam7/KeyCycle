@@ -22,6 +22,15 @@ KDF_FAST = dict(time_cost=1, memory_cost=8, parallelism=1)
 def kdf_params() -> dict:
     return KDF_FAST if os.environ.get("KEYCYCLE_FAST_KDF") == "1" else KDF_STRONG
 
+# Failed-login counts older than this are forgotten, so old failures cannot add up to a lockout.
+FAILED_LOGIN_WINDOW_SECONDS = 3600
+
+# Anonymous callers must not be able to grow the permanent audit log without bound.
+ANON_FAILED_LOGIN_AUDIT_PER_MINUTE = 60   # failed logins for unknown usernames (all clients combined)
+ANON_DENIED_AUDIT_PER_MINUTE = 10         # throttled / locked-out logins and closed-setup probes
+# Upper bounds for Argon2 parameters read from an UNAUTHENTICATED backup file.
+KDF_CEILING = dict(time_cost=6, memory_cost=128 * 1024, parallelism=8)
+
 SCHEMA_VERSION = 1
 BACKUP_FORMAT = "keycycle-backup-v1"
 MAX_BACKUP_BYTES = 50 * 1024 * 1024

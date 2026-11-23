@@ -113,7 +113,14 @@ def head(conn: sqlite3.Connection) -> dict:
 
 
 def verify_rows(rows: Iterable[Mapping[str, Any]], *, expected_count: int | None = None,
-                expected_hash: str | None = None) -> dict:
+                expected_hash: str | None = None,
+                anchors: Iterable[tuple[int, str]] = ()) -> dict:
+    """``anchors`` are (entry_no, hash) pairs remembered OUTSIDE the database.  An
+    anchored entry must still exist with the same hash, which catches tail
+    truncation and a full re-hash of history even when the chain is self-consistent."""
+    anchors = [(int(n), h) for n, h in anchors]
+    wanted = {n for n, _ in anchors}
+    seen: dict[int, str] = {}
     previous = GENESIS_HASH
     count = 0
     for row in rows:
@@ -130,6 +137,15 @@ def verify_rows(rows: Iterable[Mapping[str, Any]], *, expected_count: int | None
             return {"valid": False, "first_mismatch": entry_no,
                     "reason": "ENTRY_HASH", "entry_count": count, "hash": previous}
         previous, count = row["hash"], entry_no
+        if count in wanted:
+            seen[count] = row["hash"]
+    for number, digest in anchors:
+        if number > count:
+            return {"valid": False, "first_mismatch": count + 1, "reason": "CHAIN_TRUNCATED",
+                    "entry_count": count, "hash": previous}
+        if seen.get(number) != digest:
+            return {"valid": False, "first_mismatch": number, "reason": "ANCHOR_MISMATCH",
+                    "entry_count": count, "hash": previous}
     if expected_count is not None and count != expected_count:
         return {"valid": False, "first_mismatch": min(count, expected_count) + 1,
                 "reason": "CHAIN_HEAD_COUNT", "entry_count": count, "hash": previous}
@@ -141,9 +157,10 @@ def verify_rows(rows: Iterable[Mapping[str, Any]], *, expected_count: int | None
 
 
 def verify(conn: sqlite3.Connection, *, expected_count: int | None = None,
-           expected_hash: str | None = None) -> dict:
+           expected_hash: str | None = None, anchors: Iterable[tuple[int, str]] = ()) -> dict:
     rows = conn.execute("SELECT * FROM audit_events ORDER BY entry_no").fetchall()
-    return verify_rows(rows, expected_count=expected_count, expected_hash=expected_hash)
+    return verify_rows(rows, expected_count=expected_count, expected_hash=expected_hash,
+                       anchors=anchors)
 
 
 def migrate_legacy(conn: sqlite3.Connection) -> bool:

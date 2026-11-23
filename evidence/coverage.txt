@@ -1,0 +1,32 @@
+Name                    Stmts   Miss  Cover
+-------------------------------------------
+app/audit.py               99     25    75%
+app/audit_routes.py       118     21    82%
+app/auth.py                54      0   100%
+app/backup.py             328     62    81%
+app/backup_routes.py      155     40    74%
+app/bodylimit.py           44      6    86%
+app/ciphertext.py          39      3    92%
+app/config.py              25      0   100%
+app/confirmations.py       18      1    94%
+app/crypto_engine.py       13      0   100%
+app/db.py                  31      0   100%
+app/decisions.py           30      1    97%
+app/errors.py               8      0   100%
+app/key_policy.py          30      4    87%
+app/key_repository.py      21      1    95%
+app/key_routes.py          80      1    99%
+app/key_service.py        248     19    92%
+app/main.py               273      4    99%
+app/maintenance.py         21      0   100%
+app/models.py              96      8    92%
+app/report_routes.py       31      0   100%
+app/reports.py            123      6    95%
+app/scheduler.py          141     20    86%
+app/security.py            70      1    99%
+app/ui_routes.py           30      1    97%
+app/vault.py               59      1    98%
+-------------------------------------------
+TOTAL                    2185    225    90%
+
+1 empty file skipped.

@@ -10,6 +10,7 @@ from conftest import ADMIN_PW, PASSPHRASE
 
 PUBLIC = {("POST", "/api/setup"), ("POST", "/api/auth/login")}
 OPEN_TO_ANY_SIGNED_IN_USER = {("GET", "/api/auth/session"), ("POST", "/api/auth/logout"),
+    ("POST", "/api/auth/password"),
     ("GET", "/api/vault/status"), ("GET", "/api/keys"), ("GET", "/api/keys/1"),
     ("GET", "/api/results"), ("GET", "/api/results/1"), ("GET", "/api/reports/export")}
 

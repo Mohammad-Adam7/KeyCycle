@@ -1,0 +1,916 @@
+{
+  "meta": {
+    "generated": "2026-11-22 18:42 UTC",
+    "platform": "linux",
+    "kdf": "production Argon2id settings (64 MiB, 3 passes, 4 lanes)",
+    "final_chain_valid": true
+  },
+  "steps": [
+    {
+      "case": "T1",
+      "step": "Wrong vault passphrase",
+      "input": "admin unlocks with an incorrect passphrase",
+      "expected": "403 PASSPHRASE_INVALID, vault stays locked, attempt audited",
+      "actual": "HTTP 403 PASSPHRASE_INVALID",
+      "evidence": "audit #17: vault_unlock/failure/PASSPHRASE_INVALID",
+      "passed": true
+    },
+    {
+      "case": "T1",
+      "step": "Vault still locked",
+      "input": "GET /api/vault/status",
+      "expected": "locked = true",
+      "actual": "locked = True",
+      "evidence": "-",
+      "passed": true
+    },
+    {
+      "case": "T1",
+      "step": "Lockout after repeated failures",
+      "input": "5 wrong passphrases, then the CORRECT one",
+      "expected": "429 TOO_MANY_ATTEMPTS (even the right passphrase is refused during lockout)",
+      "actual": "HTTP 429 TOO_MANY_ATTEMPTS",
+      "evidence": "audit #22: vault_unlock/denied/TOO_MANY_ATTEMPTS",
+      "passed": true
+    },
+    {
+      "case": "T1",
+      "step": "Passphrase never logged",
+      "input": "search every vault_unlock audit entry for any passphrase",
+      "expected": "no passphrase text in the audit log",
+      "actual": "6 unlock entries, passphrase found: False",
+      "evidence": "-",
+      "passed": true
+    },
+    {
+      "case": "T1",
+      "step": "Generic login failure",
+      "input": "wrong password for a real user vs unknown username",
+      "expected": "identical status and message (no account enumeration)",
+      "actual": "HTTP 401 / 401; messages identical: True",
+      "evidence": "audit #24: login/failure/AUTH_FAILED",
+      "passed": true
+    },
+    {
+      "case": "T5",
+      "step": "Untouched chain verifies",
+      "input": "admin runs Verify chain on the seeded database",
+      "expected": "200, valid, head recorded",
+      "actual": "valid; 16 entries, head 3ed95bf7a76c\u2026",
+      "evidence": "audit #17: audit_verify/success/-",
+      "passed": true
+    },
+    {
+      "case": "T5",
+      "step": "Edited entry is detected",
+      "input": "attacker drops the update trigger and edits entry #3, then Verify",
+      "expected": "409 TAMPER_DETECTED, first_mismatch 3, severity critical",
+      "actual": "HTTP 409 TAMPER_DETECTED, first_mismatch=3, reason=ENTRY_HASH",
+      "evidence": "audit #22: audit_verify/failure/TAMPER_DETECTED",
+      "passed": true
+    },
+    {
+      "case": "T5",
+      "step": "Detection itself is audited",
+      "input": "count critical audit_verify entries",
+      "expected": "at least 1",
+      "actual": "1 critical entry",
+      "evidence": "-",
+      "passed": true
+    },
+    {
+      "case": "T5",
+      "step": "Truncated tail caught by an anchor",
+      "input": "attacker deletes the last entries; Verify with the remembered head",
+      "expected": "an unanchored Verify cannot see it; the anchored one returns TAMPER_DETECTED (CHAIN_TRUNCATED)",
+      "actual": "unanchored: HTTP 200; anchored: HTTP 409 CHAIN_TRUNCATED",
+      "evidence": "audit #16: audit_verify/failure/TAMPER_DETECTED",
+      "passed": true
+    },
+    {
+      "case": "T2",
+      "step": "Viewer tries to encrypt",
+      "input": "viewer POST /crypto/encrypt key 2",
+      "expected": "403 FORBIDDEN, generic message only (no key, rule or record detail), attempt logged",
+      "actual": "HTTP 403 FORBIDDEN",
+      "evidence": "audit #21: use_key/denied/FORBIDDEN",
+      "passed": true
+    },
+    {
+      "case": "T2",
+      "step": "Administrator uses a standard key",
+      "input": "admin encrypts with finance-key (standard)",
+      "expected": "403 FORBIDDEN (purpose separation: admins only use test keys)",
+      "actual": "HTTP 403 FORBIDDEN (rule role_check v1)",
+      "evidence": "audit #22: encrypt/denied/FORBIDDEN",
+      "passed": true
+    },
+    {
+      "case": "T2",
+      "step": "Operator uses a test key",
+      "input": "operator encrypts with test-key",
+      "expected": "403 FORBIDDEN",
+      "actual": "HTTP 403 FORBIDDEN (rule role_check v1)",
+      "evidence": "audit #23: encrypt/denied/FORBIDDEN",
+      "passed": true
+    },
+    {
+      "case": "T2",
+      "step": "Operator creates a key",
+      "input": "operator POST /keys",
+      "expected": "403 FORBIDDEN",
+      "actual": "HTTP 403 FORBIDDEN",
+      "evidence": "audit #24: manage_keys/denied/FORBIDDEN",
+      "passed": true
+    },
+    {
+      "case": "T2",
+      "step": "Operator reads the audit log",
+      "input": "operator GET /audit",
+      "expected": "403 FORBIDDEN",
+      "actual": "HTTP 403 FORBIDDEN",
+      "evidence": "audit #25: view_audit/denied/FORBIDDEN",
+      "passed": true
+    },
+    {
+      "case": "T2",
+      "step": "No session",
+      "input": "POST /crypto/encrypt without signing in",
+      "expected": "401 SESSION_EXPIRED",
+      "actual": "HTTP 401 SESSION_EXPIRED",
+      "evidence": "-",
+      "passed": true
+    },
+    {
+      "case": "T2",
+      "step": "Missing CSRF token",
+      "input": "authenticated POST without X-CSRF-Token",
+      "expected": "403 CSRF_INVALID",
+      "actual": "HTTP 403 CSRF_INVALID",
+      "evidence": "-",
+      "passed": true
+    },
+    {
+      "case": "T2",
+      "step": "Disabled account",
+      "input": "login as the disabled user 'trainee' with the correct password",
+      "expected": "401 AUTH_FAILED",
+      "actual": "HTTP 401 AUTH_FAILED",
+      "evidence": "audit #28: login/failure/AUTH_FAILED",
+      "passed": true
+    },
+    {
+      "case": "T2",
+      "step": "Viewer sees sanitised results",
+      "input": "viewer GET /results",
+      "expected": "results exclude user names and evidence",
+      "actual": "17 items; user/evidence fields present: False",
+      "evidence": "-",
+      "passed": true
+    },
+    {
+      "case": "T3",
+      "step": "Old version still decrypts",
+      "input": "operator decrypts a package made under payroll-key v1 (key is now v3)",
+      "expected": "200, plaintext 'Synthetic payroll sample'",
+      "actual": "HTTP 200 DECRYPT_OK (rule vault_state_check v1)",
+      "evidence": "audit #30: decrypt/success/DECRYPT_OK",
+      "passed": true
+    },
+    {
+      "case": "T3",
+      "step": "Rotate payroll-key",
+      "input": "admin rotates payroll-key with a single-use confirmation",
+      "expected": "200 ROTATE_OK, current version 4",
+      "actual": "HTTP 200 ROTATE_OK (rule vault_state_check v1)",
+      "evidence": "audit #33: key_rotate/success/ROTATE_OK",
+      "passed": true
+    },
+    {
+      "case": "T3",
+      "step": "Every version decrypts after rotation",
+      "input": "decrypt packages from v1, v3 and the new v4",
+      "expected": "all three return their original plaintext",
+      "actual": "plaintexts: ['version three', 'version four', 'Synthetic payroll sample']",
+      "evidence": "-",
+      "passed": true
+    },
+    {
+      "case": "T3",
+      "step": "Tampered package: altered_ciphertext",
+      "input": "decrypt fixtures.altered_ciphertext",
+      "expected": "400 CIPHERTEXT_INVALID (AAD binds key id and version)",
+      "actual": "HTTP 400 CIPHERTEXT_INVALID (rule input_validation v1)",
+      "evidence": "audit #38: decrypt/denied/CIPHERTEXT_INVALID",
+      "passed": true
+    },
+    {
+      "case": "T3",
+      "step": "Tampered package: altered_version",
+      "input": "decrypt fixtures.altered_version",
+      "expected": "400 CIPHERTEXT_INVALID (AAD binds key id and version)",
+      "actual": "HTTP 400 CIPHERTEXT_INVALID (rule input_validation v1)",
+      "evidence": "audit #39: decrypt/denied/CIPHERTEXT_INVALID",
+      "passed": true
+    },
+    {
+      "case": "T3",
+      "step": "Tampered package: altered_key",
+      "input": "decrypt fixtures.altered_key",
+      "expected": "400 CIPHERTEXT_INVALID (AAD binds key id and version)",
+      "actual": "HTTP 400 CIPHERTEXT_INVALID (rule input_validation v1)",
+      "evidence": "audit #40: decrypt/denied/CIPHERTEXT_INVALID",
+      "passed": true
+    },
+    {
+      "case": "T4",
+      "step": "Revoked key",
+      "input": "encrypt with legacy-api (revoked)",
+      "expected": "409 KEY_REVOKED (rule key_state_check)",
+      "actual": "HTTP 409 KEY_REVOKED (rule key_state_check v1)",
+      "evidence": "audit #41: encrypt/denied/KEY_REVOKED",
+      "passed": true
+    },
+    {
+      "case": "T4",
+      "step": "Expired key",
+      "input": "encrypt with archive-2026 (expired)",
+      "expected": "409 KEY_EXPIRED",
+      "actual": "HTTP 409 KEY_EXPIRED (rule key_state_check v1)",
+      "evidence": "audit #42: encrypt/denied/KEY_EXPIRED",
+      "passed": true
+    },
+    {
+      "case": "T4",
+      "step": "Revoke a rotated key",
+      "input": "admin revokes backup-key (two versions) with confirmation and typed name",
+      "expected": "200 REVOKE_OK",
+      "actual": "HTTP 200 REVOKE_OK (rule confirmation_check v1)",
+      "evidence": "audit #48: key_revoke/success/REVOKE_OK",
+      "passed": true
+    },
+    {
+      "case": "T4",
+      "step": "All versions refused after revocation",
+      "input": "decrypt the v1 and v2 packages",
+      "expected": "both 409 KEY_REVOKED",
+      "actual": "v1: HTTP 409 KEY_REVOKED (rule key_state_check v1) | v2: HTTP 409 KEY_REVOKED (rule key_state_check v1)",
+      "evidence": "audit #50: decrypt/denied/KEY_REVOKED",
+      "passed": true
+    },
+    {
+      "case": "T4",
+      "step": "Revoked key cannot be rotated",
+      "input": "request a rotate confirmation for the revoked key",
+      "expected": "409 KEY_REVOKED",
+      "actual": "HTTP 409 KEY_REVOKED (rule key_state_check v1)",
+      "evidence": "audit #51: confirmation_issue/denied/KEY_REVOKED",
+      "passed": true
+    },
+    {
+      "case": "T6",
+      "step": "Create an authenticated backup",
+      "input": "admin creates a backup with a single-use confirmation",
+      "expected": "201 BACKUP_CREATED",
+      "actual": "HTTP 201 BACKUP_CREATED",
+      "evidence": "file keycycle-20261122T184226Z-81ca40e1.kcbak; audit #53: backup_create/success/-",
+      "passed": true
+    },
+    {
+      "case": "T6",
+      "step": "Verify the backup",
+      "input": "verify HMAC and the embedded audit chain",
+      "expected": "200 valid",
+      "actual": "HTTP 200 OK",
+      "evidence": "audit #54: backup_verify/success/-",
+      "passed": true
+    },
+    {
+      "case": "T6",
+      "step": "Recovery drill",
+      "input": "run the 4-step drill in isolation (live data untouched)",
+      "expected": "authenticate backup, verify chain, restore in isolation, decrypt proof: all pass",
+      "actual": "HTTP 200: authenticate_backup=pass, verify_audit_chain=pass, restore_in_isolation=pass, decrypt_recovery_proof=pass",
+      "evidence": "audit #56: recovery_drill/success/-",
+      "passed": true
+    },
+    {
+      "case": "T6",
+      "step": "Corrupted backup is rejected",
+      "input": "flip one byte in a copy and verify it",
+      "expected": "422 BACKUP_INVALID",
+      "actual": "HTTP 422 BACKUP_INVALID",
+      "evidence": "audit #57: backup_verify/failure/BACKUP_INVALID",
+      "passed": true
+    },
+    {
+      "case": "T6",
+      "step": "Real recovery after losing the database",
+      "input": "restore the backup into an empty location with scripts/recover_backup.py; try a wrong passphrase first",
+      "expected": "wrong passphrase refused; right one restores; vault unlocks; an OLD ciphertext decrypts",
+      "actual": "wrong passphrase refused: True; restored audit entry #53; unlock HTTP 200; decrypt HTTP 200",
+      "evidence": "recovery audit entry #53, chain head f87aecef0f65\u2026",
+      "passed": true
+    },
+    {
+      "case": "T-final",
+      "step": "Malformed JSON",
+      "input": "POST '{not json'",
+      "expected": "400 INVALID_INPUT, no stack trace",
+      "actual": "HTTP 400 INVALID_INPUT",
+      "evidence": "-",
+      "passed": true
+    },
+    {
+      "case": "T-final",
+      "step": "Unexpected field",
+      "input": "extra property 'is_admin'",
+      "expected": "400 INVALID_INPUT",
+      "actual": "HTTP 400 INVALID_INPUT (rule input_validation v1)",
+      "evidence": "audit #58: encrypt/denied/INVALID_INPUT",
+      "passed": true
+    },
+    {
+      "case": "T-final",
+      "step": "Injection attempt in a field",
+      "input": "key_id = \"2; DROP TABLE keys\"",
+      "expected": "400 INVALID_INPUT (typed schema)",
+      "actual": "HTTP 400 INVALID_INPUT (rule input_validation v1)",
+      "evidence": "audit #59: encrypt/denied/INVALID_INPUT",
+      "passed": true
+    },
+    {
+      "case": "T-final",
+      "step": "Oversized data",
+      "input": "65 KiB of plaintext (limit 64 KiB)",
+      "expected": "PAYLOAD_TOO_LARGE with the threshold recorded",
+      "actual": "HTTP 413 PAYLOAD_TOO_LARGE (rule input_validation v1)",
+      "evidence": "threshold {\"max_data_kib\": {\"value\": 64, \"setting_version\": 1}}; audit #60: encrypt/denied/PAYLOAD_TOO_LARGE",
+      "passed": true
+    },
+    {
+      "case": "T-final",
+      "step": "Oversized request body",
+      "input": "300 KiB body (hard limit 256 KiB)",
+      "expected": "413 PAYLOAD_TOO_LARGE before parsing",
+      "actual": "HTTP 413 PAYLOAD_TOO_LARGE",
+      "evidence": "-",
+      "passed": true
+    },
+    {
+      "case": "T-final",
+      "step": "Repeated submission (replay)",
+      "input": "reuse a consumed rotation confirmation",
+      "expected": "409 CONFIRMATION_REQUIRED, no second rotation",
+      "actual": "HTTP 409 CONFIRMATION_REQUIRED (rule confirmation_check v1)",
+      "evidence": "audit #63: key_rotate/denied/CONFIRMATION_REQUIRED",
+      "passed": true
+    },
+    {
+      "case": "T-final",
+      "step": "Rate limit on a sensitive action",
+      "input": "35 encrypts in a few seconds (limit 30/min/user)",
+      "expected": "first 30 succeed, the rest 429 RATE_LIMITED",
+      "actual": "30 x 200, 5 x 429",
+      "evidence": "-",
+      "passed": true
+    },
+    {
+      "case": "T-final",
+      "step": "Safe failure",
+      "input": "verify a backup that does not exist",
+      "expected": "422 BACKUP_INVALID with a generic message, no path or stack trace",
+      "actual": "HTTP 422 BACKUP_INVALID",
+      "evidence": "audit #99: backup_verify/failure/BACKUP_INVALID",
+      "passed": true
+    },
+    {
+      "case": "T-final",
+      "step": "Recovery after restart",
+      "input": "start a NEW application process on the same database",
+      "expected": "vault locked (423 VAULT_LOCKED), keys and audit chain intact, works again after unlock",
+      "actual": "before unlock HTTP 423; after unlock HTTP 200; chain verify HTTP 200; keys 6 -> 6",
+      "evidence": "audit chain verified after restart",
+      "passed": true
+    }
+  ],
+  "decision_matrix": {
+    "summary": {
+      "total": 49,
+      "true_allow": 16,
+      "true_deny": 33,
+      "false_positives": 0,
+      "false_negatives": 0,
+      "accuracy": 100.0
+    },
+    "cases": [
+      {
+        "case": "admin encrypts with a standard key",
+        "expected": "deny",
+        "actual": "deny",
+        "status": 403,
+        "correct": true
+      },
+      {
+        "case": "admin encrypts with a test key",
+        "expected": "allow",
+        "actual": "allow",
+        "status": 200,
+        "correct": true
+      },
+      {
+        "case": "operator encrypts with a standard key",
+        "expected": "allow",
+        "actual": "allow",
+        "status": 200,
+        "correct": true
+      },
+      {
+        "case": "operator encrypts with a test key",
+        "expected": "deny",
+        "actual": "deny",
+        "status": 403,
+        "correct": true
+      },
+      {
+        "case": "viewer encrypts with a standard key",
+        "expected": "deny",
+        "actual": "deny",
+        "status": 403,
+        "correct": true
+      },
+      {
+        "case": "viewer encrypts with a test key",
+        "expected": "deny",
+        "actual": "deny",
+        "status": 403,
+        "correct": true
+      },
+      {
+        "case": "anonymous encrypts with a standard key",
+        "expected": "deny",
+        "actual": "deny",
+        "status": 401,
+        "correct": true
+      },
+      {
+        "case": "anonymous encrypts with a test key",
+        "expected": "deny",
+        "actual": "deny",
+        "status": 401,
+        "correct": true
+      },
+      {
+        "case": "admin decrypts a standard-key package",
+        "expected": "deny",
+        "actual": "deny",
+        "status": 403,
+        "correct": true
+      },
+      {
+        "case": "admin decrypts a test-key package",
+        "expected": "allow",
+        "actual": "allow",
+        "status": 200,
+        "correct": true
+      },
+      {
+        "case": "operator decrypts a standard-key package",
+        "expected": "allow",
+        "actual": "allow",
+        "status": 200,
+        "correct": true
+      },
+      {
+        "case": "operator decrypts a test-key package",
+        "expected": "deny",
+        "actual": "deny",
+        "status": 403,
+        "correct": true
+      },
+      {
+        "case": "viewer decrypts a standard-key package",
+        "expected": "deny",
+        "actual": "deny",
+        "status": 403,
+        "correct": true
+      },
+      {
+        "case": "viewer decrypts a test-key package",
+        "expected": "deny",
+        "actual": "deny",
+        "status": 403,
+        "correct": true
+      },
+      {
+        "case": "admin creates a key",
+        "expected": "allow",
+        "actual": "allow",
+        "status": 201,
+        "correct": true
+      },
+      {
+        "case": "operator creates a key",
+        "expected": "deny",
+        "actual": "deny",
+        "status": 403,
+        "correct": true
+      },
+      {
+        "case": "viewer creates a key",
+        "expected": "deny",
+        "actual": "deny",
+        "status": 403,
+        "correct": true
+      },
+      {
+        "case": "anonymous creates a key",
+        "expected": "deny",
+        "actual": "deny",
+        "status": 401,
+        "correct": true
+      },
+      {
+        "case": "admin lists keys",
+        "expected": "allow",
+        "actual": "allow",
+        "status": 200,
+        "correct": true
+      },
+      {
+        "case": "operator lists keys",
+        "expected": "allow",
+        "actual": "allow",
+        "status": 200,
+        "correct": true
+      },
+      {
+        "case": "viewer lists keys",
+        "expected": "allow",
+        "actual": "allow",
+        "status": 200,
+        "correct": true
+      },
+      {
+        "case": "anonymous lists keys",
+        "expected": "deny",
+        "actual": "deny",
+        "status": 401,
+        "correct": true
+      },
+      {
+        "case": "admin reads the audit log",
+        "expected": "allow",
+        "actual": "allow",
+        "status": 200,
+        "correct": true
+      },
+      {
+        "case": "admin lists users",
+        "expected": "allow",
+        "actual": "allow",
+        "status": 200,
+        "correct": true
+      },
+      {
+        "case": "admin lists backups",
+        "expected": "allow",
+        "actual": "allow",
+        "status": 200,
+        "correct": true
+      },
+      {
+        "case": "admin unlocks the vault",
+        "expected": "allow",
+        "actual": "allow",
+        "status": 200,
+        "correct": true
+      },
+      {
+        "case": "operator reads the audit log",
+        "expected": "deny",
+        "actual": "deny",
+        "status": 403,
+        "correct": true
+      },
+      {
+        "case": "operator lists users",
+        "expected": "deny",
+        "actual": "deny",
+        "status": 403,
+        "correct": true
+      },
+      {
+        "case": "operator lists backups",
+        "expected": "deny",
+        "actual": "deny",
+        "status": 403,
+        "correct": true
+      },
+      {
+        "case": "operator unlocks the vault",
+        "expected": "deny",
+        "actual": "deny",
+        "status": 403,
+        "correct": true
+      },
+      {
+        "case": "viewer reads the audit log",
+        "expected": "deny",
+        "actual": "deny",
+        "status": 403,
+        "correct": true
+      },
+      {
+        "case": "viewer lists users",
+        "expected": "deny",
+        "actual": "deny",
+        "status": 403,
+        "correct": true
+      },
+      {
+        "case": "viewer lists backups",
+        "expected": "deny",
+        "actual": "deny",
+        "status": 403,
+        "correct": true
+      },
+      {
+        "case": "viewer unlocks the vault",
+        "expected": "deny",
+        "actual": "deny",
+        "status": 403,
+        "correct": true
+      },
+      {
+        "case": "anonymous reads the audit log",
+        "expected": "deny",
+        "actual": "deny",
+        "status": 401,
+        "correct": true
+      },
+      {
+        "case": "anonymous lists users",
+        "expected": "deny",
+        "actual": "deny",
+        "status": 401,
+        "correct": true
+      },
+      {
+        "case": "anonymous lists backups",
+        "expected": "deny",
+        "actual": "deny",
+        "status": 401,
+        "correct": true
+      },
+      {
+        "case": "anonymous unlocks the vault",
+        "expected": "deny",
+        "actual": "deny",
+        "status": 401,
+        "correct": true
+      },
+      {
+        "case": "admin exports a report",
+        "expected": "allow",
+        "actual": "allow",
+        "status": 200,
+        "correct": true
+      },
+      {
+        "case": "operator exports a report",
+        "expected": "allow",
+        "actual": "allow",
+        "status": 200,
+        "correct": true
+      },
+      {
+        "case": "viewer exports a report",
+        "expected": "allow",
+        "actual": "allow",
+        "status": 200,
+        "correct": true
+      },
+      {
+        "case": "anonymous exports a report",
+        "expected": "deny",
+        "actual": "deny",
+        "status": 401,
+        "correct": true
+      },
+      {
+        "case": "operator encrypts with a revoked key",
+        "expected": "deny",
+        "actual": "deny",
+        "status": 409,
+        "correct": true
+      },
+      {
+        "case": "operator encrypts with an expired key",
+        "expected": "deny",
+        "actual": "deny",
+        "status": 409,
+        "correct": true
+      },
+      {
+        "case": "operator encrypts with a missing key",
+        "expected": "deny",
+        "actual": "deny",
+        "status": 404,
+        "correct": true
+      },
+      {
+        "case": "operator sends an oversized payload",
+        "expected": "deny",
+        "actual": "deny",
+        "status": 413,
+        "correct": true
+      },
+      {
+        "case": "operator sends a malformed package",
+        "expected": "deny",
+        "actual": "deny",
+        "status": 400,
+        "correct": true
+      },
+      {
+        "case": "operator decrypts a tampered package",
+        "expected": "deny",
+        "actual": "deny",
+        "status": 400,
+        "correct": true
+      },
+      {
+        "case": "operator decrypts a valid old-version package",
+        "expected": "allow",
+        "actual": "allow",
+        "status": 200,
+        "correct": true
+      }
+    ]
+  },
+  "latency": [
+    {
+      "operation": "login",
+      "n": 10,
+      "p50": 125.0,
+      "p95": 135.4,
+      "p99": 135.4,
+      "max": 135.4,
+      "mean": 124.2
+    },
+    {
+      "operation": "vault unlock",
+      "n": 3,
+      "p50": 92.3,
+      "p95": 104.8,
+      "p99": 104.8,
+      "max": 104.8,
+      "mean": 95.2
+    },
+    {
+      "operation": "encrypt (allowed)",
+      "n": 100,
+      "p50": 6.7,
+      "p95": 10.2,
+      "p99": 20.8,
+      "max": 44.3,
+      "mean": 7.6
+    },
+    {
+      "operation": "decrypt (allowed)",
+      "n": 100,
+      "p50": 6.6,
+      "p95": 7.4,
+      "p99": 8.1,
+      "max": 8.3,
+      "mean": 6.7
+    },
+    {
+      "operation": "denied decision (viewer encrypt)",
+      "n": 100,
+      "p50": 6.2,
+      "p95": 7.2,
+      "p99": 8.4,
+      "max": 10.7,
+      "mean": 6.3
+    },
+    {
+      "operation": "list keys",
+      "n": 100,
+      "p50": 4.3,
+      "p95": 4.7,
+      "p99": 4.8,
+      "max": 6.2,
+      "mean": 4.3
+    },
+    {
+      "operation": "audit verify",
+      "n": 10,
+      "p50": 13.2,
+      "p95": 22.9,
+      "p99": 22.9,
+      "max": 22.9,
+      "mean": 14.1
+    }
+  ],
+  "latency_extra": {
+    "audit_entries_at_verify": 335,
+    "server_side_ms": {
+      "encrypt": {
+        "n": 101,
+        "max": 33,
+        "mean": 1.66
+      },
+      "decrypt": {
+        "n": 100,
+        "max": 1,
+        "mean": 1
+      }
+    }
+  },
+  "threshold_demo": [
+    {
+      "label": "1. 2 KiB payload, default limit 64 KiB",
+      "http": 200,
+      "code": "ENCRYPT_OK",
+      "rule": {
+        "name": "vault_state_check",
+        "version": 1
+      },
+      "thresholds": {
+        "max_data_kib": {
+          "value": 64,
+          "setting_version": 1
+        }
+      },
+      "audit_entry": 346
+    },
+    {
+      "label": "2. admin lowers max_data_kib from 64 to 1",
+      "http": 200,
+      "setting": {
+        "name": "max_data_kib",
+        "value": 1
+      }
+    },
+    {
+      "label": "3. SAME 2 KiB payload, limit now 1 KiB",
+      "http": 413,
+      "code": "PAYLOAD_TOO_LARGE",
+      "rule": {
+        "name": "input_validation",
+        "version": 2
+      },
+      "thresholds": {
+        "max_data_kib": {
+          "value": 1,
+          "setting_version": 2
+        }
+      },
+      "audit_entry": 348
+    },
+    {
+      "label": "4. admin restores max_data_kib to 64",
+      "http": 200,
+      "setting": {
+        "name": "max_data_kib",
+        "value": 64
+      }
+    },
+    {
+      "label": "5. SAME payload again",
+      "http": 200,
+      "code": "ENCRYPT_OK",
+      "rule": {
+        "name": "vault_state_check",
+        "version": 1
+      },
+      "thresholds": {
+        "max_data_kib": {
+          "value": 64,
+          "setting_version": 3
+        }
+      },
+      "audit_entry": 350
+    }
+  ],
+  "setting_change_entries": [
+    {
+      "entry": 347,
+      "user": "admin",
+      "details": {
+        "new": 1,
+        "old": 64
+      }
+    },
+    {
+      "entry": 349,
+      "user": "admin",
+      "details": {
+        "new": 64,
+        "old": 1
+      }
+    }
+  ]
+}

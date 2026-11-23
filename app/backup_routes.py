@@ -173,12 +173,19 @@ def restore_backup(name: str, request: Request,
         content, tables, checked = backup.load_verified(request.app.state.backup_store, name,
                                                          passphrase=body.passphrase)
         now = int(time.time())
+        evidence = None
+        if not audit.verify(request.state.conn)["valid"]:
+            # The restore will replace a log that failed verification: keep a copy first.
+            evidence = backup.preserve_evidence(request.state.conn,
+                                                request.app.state.backup_store.folder.parent / "evidence")
         with transaction(request.state.conn):
             confirmation = _confirmation(request.state.conn, request, p, "restore",
                                          _target("restore", name), body.confirmation_token, now)
             confirmations.consume(request.state.conn, confirmation, now)
             request.app.state.vault.lock()
             restore_result = backup.restore(request.state.conn, tables, content)
+            if evidence:
+                restore_result["evidence_copy"] = evidence
             entry = audit.record(request.state.conn, user=p.username, role=p.role,
                                  action="backup_restore", target=name, outcome="success",
                                  severity="warning",

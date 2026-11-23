@@ -10,12 +10,13 @@ from fastapi.responses import JSONResponse
 
 from . import audit
 from .auth import COOKIE, Principal, authenticate, permission
-from .config import MAX_BODY_BYTES, SETTINGS, kdf_params
-from .db import connect, get_setting, init_db
+from .config import (ANON_DENIED_AUDIT_PER_MINUTE, FAILED_LOGIN_WINDOW_SECONDS, ANON_FAILED_LOGIN_AUDIT_PER_MINUTE,
+                     MAX_BODY_BYTES, SETTINGS, kdf_params)
+from .db import connect, get_setting, init_db, transaction
 from .errors import AppError
-from .models import LoginIn, SetupIn, SettingPatch, UnlockIn, UserCreate, UserPatch
+from .models import LoginIn, PasswordChangeIn, SetupIn, SettingPatch, UnlockIn, UserCreate, UserPatch
 from .bodylimit import BodyLimit
-from .security import FailureTracker, RateLimiter, make_hasher, new_token, token_hash, verify_password
+from .security import AuditBudget, FailureTracker, RateLimiter, make_hasher, new_token, token_hash, verify_password
 from .vault import Vault
 from .key_routes import router as key_router
 from .scheduler import Scheduler
@@ -31,7 +32,11 @@ from pathlib import Path
 LOGIN_PER_MINUTE_PER_ADDRESS = 20
 
 HEADERS = {
-    "Content-Security-Policy": "default-src 'self'; frame-ancestors 'none'; base-uri 'none'",
+    # Scripts and stylesheets only from this origin. Inline style ATTRIBUTES (display:none and
+    # similar in the page markup) are allowed because they cannot run code; without this the
+    # browser ignores them and hidden panels such as the setup form appear.
+    "Content-Security-Policy": "default-src 'self'; style-src 'self'; style-src-attr 'unsafe-inline'; "
+                               "frame-ancestors 'none'; base-uri 'none'",
     "X-Content-Type-Options": "nosniff",
     "X-Frame-Options": "DENY",
     "Referrer-Policy": "no-referrer",
@@ -70,6 +75,7 @@ def create_app(db_path: str | None = None, *, scheduler_interval: float = 30.0) 
     app.state.scheduler = Scheduler(db_path, app.state.vault, scheduler_interval)
     app.state.limiter = RateLimiter()
     app.state.login_throttle = RateLimiter()
+    app.state.audit_budget = AuditBudget()
     app.state.failures = FailureTracker()
     app.state.hasher = make_hasher()
     app.state.dummy_hash = app.state.hasher.hash("keycycle-dummy-password")
@@ -107,16 +113,39 @@ def create_app(db_path: str | None = None, *, scheduler_interval: float = 30.0) 
     async def _internal(request, e):
         return error_response(AppError("INTERNAL_ERROR"))
 
+    def anonymous_audit(bucket: str, limit: int, conn, **record):
+        """Audit an unauthenticated event within a per-minute budget; returns the entry or None."""
+        verdict, carried = app.state.audit_budget.admit(bucket, limit)
+        if verdict == "skip":
+            return None
+        if verdict == "summary":
+            return audit.record(conn, user="anonymous", action=record["action"], outcome="denied",
+                                severity="warning", reason="AUDIT_SUPPRESSED",
+                                details={"bucket": bucket, "limit_per_minute": limit})
+        if carried:
+            record["details"] = {**(record.get("details") or {}), "suppressed_in_previous_window": carried}
+        return audit.record(conn, **record)
+
     @app.post("/api/setup", status_code=201)
     def setup(body: SetupIn, request: Request):
         conn = request.state.conn
-        if conn.execute("SELECT 1 FROM users LIMIT 1").fetchone():
-            entry = audit.record(conn, action="setup", outcome="denied", severity="warning", reason="SETUP_CLOSED")
+        # Hash outside the write lock; the existence check and every insert then
+        # share ONE transaction so concurrent setups cannot each create an admin
+        # and a failed setup cannot leave a half-initialised database behind.
+        password_hash = app.state.hasher.hash(body.password)
+        closed = False
+        with transaction(conn):
+            if conn.execute("SELECT 1 FROM users LIMIT 1").fetchone():
+                closed = True
+            else:
+                conn.execute("INSERT INTO users(username,password_hash,role,created_at) VALUES (?,?,?,?)",
+                             (body.username, password_hash, "administrator", int(time.time())))
+                app.state.vault.initialise(conn, body.vault_passphrase, kdf_params())
+                audit.record(conn, user=body.username, role="administrator", action="setup", outcome="success")
+        if closed:
+            entry = anonymous_audit("anon_denied", ANON_DENIED_AUDIT_PER_MINUTE, conn, action="setup",
+                                    outcome="denied", severity="warning", reason="SETUP_CLOSED")
             raise AppError("SETUP_CLOSED", entry)
-        conn.execute("INSERT INTO users(username,password_hash,role,created_at) VALUES (?,?,?,?)",
-                     (body.username, app.state.hasher.hash(body.password), "administrator", int(time.time())))
-        app.state.vault.initialise(conn, body.vault_passphrase, kdf_params())
-        audit.record(conn, user=body.username, role="administrator", action="setup", outcome="success")
         return {"username": body.username, "role": "administrator", "vault": "locked"}
 
     @app.post("/api/auth/login")
@@ -124,8 +153,8 @@ def create_app(db_path: str | None = None, *, scheduler_interval: float = 30.0) 
         conn, now = request.state.conn, int(time.time())
         client = request.client.host if request.client else "unknown"
         if not app.state.login_throttle.allow(client, LOGIN_PER_MINUTE_PER_ADDRESS):
-            entry = audit.record(conn, user=body.username, action="login", outcome="denied",
-                                 severity="warning", reason="RATE_LIMITED")
+            entry = anonymous_audit("anon_denied", ANON_DENIED_AUDIT_PER_MINUTE, conn, user=body.username,
+                                    action="login", outcome="denied", severity="warning", reason="RATE_LIMITED")
             raise AppError("RATE_LIMITED", entry)
         conn.execute("DELETE FROM sessions WHERE expires_at < ?", (now,))   # tidy expired sessions
         limit = get_setting(conn, "failed_logins_before_lockout")
@@ -135,8 +164,8 @@ def create_app(db_path: str | None = None, *, scheduler_interval: float = 30.0) 
         tracker = app.state.failures
 
         def too_many():
-            entry = audit.record(conn, user=body.username, action="login", outcome="denied",
-                                 severity="warning", reason="TOO_MANY_ATTEMPTS")
+            entry = anonymous_audit("anon_denied", ANON_DENIED_AUDIT_PER_MINUTE, conn, user=body.username,
+                                    action="login", outcome="denied", severity="warning", reason="TOO_MANY_ATTEMPTS")
             return AppError("TOO_MANY_ATTEMPTS", entry)
 
         if (user and user["locked_until"] > now) or (not user and tracker.locked(conn, key)):
@@ -145,17 +174,30 @@ def create_app(db_path: str | None = None, *, scheduler_interval: float = 30.0) 
         ok = verify_password(app.state.hasher, stored, body.password) and user is not None and not user["disabled"]
         if not ok:
             if user:
-                count = user["failed_count"] + 1
+                window_key = "loginwin:" + body.username.lower()
+                last = conn.execute("SELECT updated_at FROM failures WHERE key = ?", (window_key,)).fetchone()
+                # Failures older than the window are forgotten rather than added up forever.
+                fresh = last is not None and now - last["updated_at"] <= FAILED_LOGIN_WINDOW_SECONDS
+                count = (user["failed_count"] if fresh else 0) + 1
                 if count >= limit:
                     conn.execute("UPDATE users SET failed_count=0, locked_until=? WHERE id=?", (now + lock_s, user["id"]))
+                    conn.execute("DELETE FROM failures WHERE key = ?", (window_key,))
                 else:
                     conn.execute("UPDATE users SET failed_count=? WHERE id=?", (count, user["id"]))
+                    conn.execute("INSERT INTO failures(key,count,locked_until,updated_at) VALUES (?,0,0,?) "
+                                 "ON CONFLICT(key) DO UPDATE SET updated_at=excluded.updated_at", (window_key, now))
             else:
                 tracker.fail(conn, key, limit, lock_s)
-            entry = audit.record(conn, user=body.username, action="login", outcome="failure",
-                                 severity="warning", reason="AUTH_FAILED")
+            if user:   # bounded already: the account locks after a few failures
+                entry = audit.record(conn, user=body.username, action="login", outcome="failure",
+                                     severity="warning", reason="AUTH_FAILED")
+            else:      # unknown usernames are unbounded in number, so budget them
+                entry = anonymous_audit("anon_failed_login", ANON_FAILED_LOGIN_AUDIT_PER_MINUTE, conn,
+                                        user=body.username, action="login", outcome="failure",
+                                        severity="warning", reason="AUTH_FAILED")
             raise AppError("AUTH_FAILED", entry)
         conn.execute("UPDATE users SET failed_count=0, locked_until=0, last_login=? WHERE id=?", (now, user["id"]))
+        conn.execute("DELETE FROM failures WHERE key = ?", ("loginwin:" + user["username"].lower(),))
         token, csrf = new_token(), new_token()
         timeout = get_setting(conn, "session_timeout_minutes") * 60
         conn.execute("INSERT INTO sessions(token_hash,user_id,csrf_token,created_at,last_activity,expires_at) "
@@ -164,6 +206,38 @@ def create_app(db_path: str | None = None, *, scheduler_interval: float = 30.0) 
                             secure=request.url.scheme == "https", path="/")
         audit.record(conn, user=user["username"], role=user["role"], action="login", outcome="success")
         return {"username": user["username"], "role": user["role"], "csrf_token": csrf, "expires_in": timeout}
+
+    @app.post("/api/auth/password")
+    def change_password(body: PasswordChangeIn, request: Request, p: Principal = Depends(authenticate)):
+        conn, now = request.state.conn, int(time.time())
+        key = f"password:{p.user_id}"
+        limit = get_setting(conn, "failed_logins_before_lockout")
+        lock_s = get_setting(conn, "lockout_minutes") * 60
+        if app.state.failures.locked(conn, key):
+            entry = audit.record(conn, user=p.username, role=p.role, action="password_change",
+                                 outcome="denied", severity="warning", reason="TOO_MANY_ATTEMPTS")
+            raise AppError("TOO_MANY_ATTEMPTS", entry)
+        stored = conn.execute("SELECT password_hash FROM users WHERE id = ?", (p.user_id,)).fetchone()["password_hash"]
+        if not verify_password(app.state.hasher, stored, body.current_password):
+            app.state.failures.fail(conn, key, limit, lock_s)
+            entry = audit.record(conn, user=p.username, role=p.role, action="password_change",
+                                 outcome="denied", severity="warning", reason="PASSWORD_INVALID")
+            raise AppError("PASSWORD_INVALID", entry)
+        if body.new_password == body.current_password:
+            entry = audit.record(conn, user=p.username, role=p.role, action="password_change",
+                                 outcome="denied", severity="warning", reason="INVALID_INPUT")
+            raise AppError("INVALID_INPUT", entry)
+        app.state.failures.reset(conn, key)
+        new_hash = app.state.hasher.hash(body.new_password)
+        current_session = token_hash(request.cookies[COOKIE])
+        with transaction(conn):
+            conn.execute("UPDATE users SET password_hash=?, failed_count=0, locked_until=0 WHERE id=?",
+                         (new_hash, p.user_id))
+            ended = conn.execute("DELETE FROM sessions WHERE user_id=? AND token_hash<>?",
+                                 (p.user_id, current_session)).rowcount
+            audit.record(conn, user=p.username, role=p.role, action="password_change",
+                         outcome="success", details={"other_sessions_ended": ended})
+        return {"status": "password changed", "other_sessions_ended": ended}
 
     @app.post("/api/auth/logout")
     def logout(request: Request, response: Response):

@@ -2,6 +2,7 @@
 ERRORS = {
     "AUTH_FAILED": (401, "Sign-in failed. Check your details or try again later."),
     "TOO_MANY_ATTEMPTS": (429, "Too many attempts. Try again later."),
+    "PASSWORD_INVALID": (403, "The current password is incorrect."),
     "SESSION_EXPIRED": (401, "Your session is missing or has expired."),
     "CSRF_INVALID": (403, "The request could not be verified."),
     "FORBIDDEN": (403, "You do not have permission to do this."),

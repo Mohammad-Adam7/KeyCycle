@@ -53,6 +53,31 @@ class RateLimiter:
             return True
 
 
+class AuditBudget:
+    """Bounds how many audit rows an anonymous bucket may write per window.
+
+    admit() -> (verdict, carried): "write" (normal row), "summary" (first row refused
+    in this window: write ONE summary row), "skip".  ``carried`` is the number of rows
+    suppressed in the previous window, to be reported on the next row written."""
+
+    def __init__(self, window: float = 60.0):
+        self._window, self._state, self._lock = window, {}, threading.Lock()
+
+    def admit(self, bucket: str, limit: int):
+        now = time.monotonic()
+        with self._lock:
+            state = self._state.get(bucket)
+            if state is None or now - state[0] >= self._window:
+                carried = state[2] if state else 0
+                self._state[bucket] = [now, 1, 0]
+                return "write", carried
+            if state[1] < limit:
+                state[1] += 1
+                return "write", 0
+            state[2] += 1
+            return ("summary" if state[2] == 1 else "skip"), 0
+
+
 class FailureTracker:
 
     STALE_SECONDS = 3600

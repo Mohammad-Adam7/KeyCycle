@@ -67,6 +67,7 @@ class KeyCycleApp {
     document.getElementById('user-badge').style.display = 'block';
     document.getElementById('vault-pill').style.display = 'flex';
     document.getElementById('btn-signout').style.display = 'inline-flex';
+    document.getElementById('btn-password').style.display = 'inline-flex';
 
     document.getElementById('user-name').textContent = session.username;
     document.getElementById('user-role').textContent = session.role;
@@ -88,6 +89,7 @@ class KeyCycleApp {
     document.getElementById('user-badge').style.display = 'none';
     document.getElementById('vault-pill').style.display = 'none';
     document.getElementById('btn-signout').style.display = 'none';
+    document.getElementById('btn-password').style.display = 'none';
     this.showView('auth');
   }
 
@@ -196,24 +198,24 @@ class KeyCycleApp {
 
       const isAdmin = this.user?.role === 'administrator';
       tbody.innerHTML = keys.map(k => {
-        const stateClass = `state-${k.state}`;
+        const stateClass = `state-${this.escape(k.state)}`;
         const canRotate = isAdmin && k.state === 'active';
         const canRevoke = isAdmin && k.state !== 'revoked';
 
         return `
           <tr>
-            <td class="mono">${k.id}</td>
+            <td class="mono">${this.escape(k.id)}</td>
             <td><strong>${this.escape(k.name)}</strong></td>
-            <td><span class="badge ${k.purpose === 'test' ? 'sev-warning' : 'sev-info'}">${k.purpose}</span></td>
-            <td><span class="badge ${stateClass}">${k.state}</span></td>
-            <td class="mono">v${k.current_version}</td>
-            <td>${k.rotation_days} days</td>
-            <td class="mono" style="font-size: 0.75rem;">${k.created_at || '-'}</td>
+            <td><span class="badge ${k.purpose === 'test' ? 'sev-warning' : 'sev-info'}">${this.escape(k.purpose)}</span></td>
+            <td><span class="badge ${stateClass}">${this.escape(k.state)}</span></td>
+            <td class="mono">v${this.escape(k.current_version)}</td>
+            <td>${this.escape(k.rotation_days)} days</td>
+            <td class="mono" style="font-size: 0.75rem;">${this.escape(k.created_at || '-')}</td>
             <td>
               <div style="display: flex; gap: 0.35rem;">
-                <button class="btn btn-secondary btn-sm" data-action="show-details" data-key-id="${k.id}">Details</button>
-                ${canRotate ? `<button class="btn btn-primary btn-sm" data-action="rotate-key" data-key-id="${k.id}">Rotate</button>` : ''}
-                ${canRevoke ? `<button class="btn btn-danger btn-sm" data-action="revoke-key" data-key-id="${k.id}" data-key-name="${this.escape(k.name)}">Revoke</button>` : ''}
+                <button class="btn btn-secondary btn-sm" data-action="show-details" data-key-id="${this.escape(k.id)}">Details</button>
+                ${canRotate ? `<button class="btn btn-primary btn-sm" data-action="rotate-key" data-key-id="${this.escape(k.id)}">Rotate</button>` : ''}
+                ${canRevoke ? `<button class="btn btn-danger btn-sm" data-action="revoke-key" data-key-id="${this.escape(k.id)}" data-key-name="${this.escape(k.name)}">Revoke</button>` : ''}
               </div>
             </td>
           </tr>
@@ -228,7 +230,7 @@ class KeyCycleApp {
     try {
       const res = await this.api(`/api/keys/${keyId}`);
       const k = res.data || res;
-      document.getElementById('details-modal-title').textContent = `Key: ${k.name} (ID: ${k.id})`;
+      document.getElementById('details-modal-title').textContent = `Key: ${this.escape(k.name)} (ID: ${this.escape(k.id)})`;
       const body = document.getElementById('details-modal-body');
 
       let versionsHtml = '<div style="color: var(--text-dim); margin-top: 0.5rem;">No historical versions recorded.</div>';
@@ -242,9 +244,9 @@ class KeyCycleApp {
             <tbody>
               ${k.versions.map(v => `
                 <tr>
-                  <td class="mono">v${v.version}</td>
-                  <td><span class="badge ${v.status === 'current' ? 'state-active' : 'state-expired'}">${v.status}</span></td>
-                  <td class="mono">${v.created_at || '-'}</td>
+                  <td class="mono">v${this.escape(v.version)}</td>
+                  <td><span class="badge ${v.status === 'current' ? 'state-active' : 'state-expired'}">${this.escape(v.status)}</span></td>
+                  <td class="mono">${this.escape(v.created_at || '-')}</td>
                 </tr>
               `).join('')}
             </tbody>
@@ -254,14 +256,14 @@ class KeyCycleApp {
 
       body.innerHTML = `
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 0.75rem;">
-          <div><span style="color: var(--text-dim);">Algorithm:</span> <strong>${k.algorithm}</strong></div>
-          <div><span style="color: var(--text-dim);">Purpose:</span> <span class="badge ${k.purpose === 'test' ? 'sev-warning' : 'sev-info'}">${k.purpose}</span></div>
-          <div><span style="color: var(--text-dim);">State:</span> <span class="badge state-${k.state}">${k.state}</span></div>
-          <div><span style="color: var(--text-dim);">Current Version:</span> <strong class="mono">v${k.current_version}</strong></div>
-          <div><span style="color: var(--text-dim);">Rotation Period:</span> ${k.rotation_days} days</div>
-          <div><span style="color: var(--text-dim);">Next Due:</span> <span class="mono">${k.next_rotation_due || 'N/A'}</span></div>
-          <div><span style="color: var(--text-dim);">Created At:</span> <span class="mono">${k.created_at || '-'}</span></div>
-          ${k.revoked_at ? `<div><span style="color: #f43f5e;">Revoked At:</span> <span class="mono">${k.revoked_at}</span></div>` : ''}
+          <div><span style="color: var(--text-dim);">Algorithm:</span> <strong>${this.escape(k.algorithm)}</strong></div>
+          <div><span style="color: var(--text-dim);">Purpose:</span> <span class="badge ${k.purpose === 'test' ? 'sev-warning' : 'sev-info'}">${this.escape(k.purpose)}</span></div>
+          <div><span style="color: var(--text-dim);">State:</span> <span class="badge state-${this.escape(k.state)}">${this.escape(k.state)}</span></div>
+          <div><span style="color: var(--text-dim);">Current Version:</span> <strong class="mono">v${this.escape(k.current_version)}</strong></div>
+          <div><span style="color: var(--text-dim);">Rotation Period:</span> ${this.escape(k.rotation_days)} days</div>
+          <div><span style="color: var(--text-dim);">Next Due:</span> <span class="mono">${this.escape(k.next_rotation_due || 'N/A')}</span></div>
+          <div><span style="color: var(--text-dim);">Created At:</span> <span class="mono">${this.escape(k.created_at || '-')}</span></div>
+          ${k.revoked_at ? `<div><span style="color: #f43f5e;">Revoked At:</span> <span class="mono">${this.escape(k.revoked_at)}</span></div>` : ''}
           ${k.revoke_reason ? `<div style="grid-column: span 2;"><span style="color: #f43f5e;">Revoke Reason:</span> <em>${this.escape(k.revoke_reason)}</em></div>` : ''}
         </div>
         ${versionsHtml}
@@ -331,12 +333,12 @@ class KeyCycleApp {
       const available = keys.filter(k => k.purpose === purpose && k.state === 'active');
 
       if (!available.length) {
-        sel.innerHTML = `<option value="">No active ${purpose} keys available</option>`;
+        sel.innerHTML = `<option value="">No active ${this.escape(purpose)} keys available</option>`;
       } else {
         available.forEach(k => {
           const opt = document.createElement('option');
           opt.value = k.id;
-          opt.textContent = `${k.name} (v${k.current_version}) [${k.purpose}]`;
+          opt.textContent = `${this.escape(k.name)} (v${this.escape(k.current_version)}) [${this.escape(k.purpose)}]`;
           sel.appendChild(opt);
         });
       }
@@ -464,15 +466,15 @@ class KeyCycleApp {
 
       tbody.innerHTML = items.map(ev => `
         <tr>
-          <td class="mono">${ev.entry_no}</td>
-          <td class="mono" style="font-size: 0.75rem;">${ev.time}</td>
-          <td><strong>${this.escape(ev.user)}</strong> <span style="font-size: 0.75rem; color: var(--text-dim);">(${ev.role})</span></td>
-          <td><span class="mono">${ev.action}</span></td>
+          <td class="mono">${this.escape(ev.entry_no)}</td>
+          <td class="mono" style="font-size: 0.75rem;">${this.escape(ev.time)}</td>
+          <td><strong>${this.escape(ev.user)}</strong> <span style="font-size: 0.75rem; color: var(--text-dim);">(${this.escape(ev.role)})</span></td>
+          <td><span class="mono">${this.escape(ev.action)}</span></td>
           <td class="truncate" title="${this.escape(ev.target)}">${this.escape(ev.target) || '-'}</td>
-          <td><span class="badge outcome-${ev.outcome}">${ev.outcome}</span></td>
-          <td><span class="badge sev-${ev.severity}">${ev.severity}</span></td>
-          <td class="mono">${ev.duration_ms}ms</td>
-          <td class="mono truncate" title="${ev.hash}">${ev.hash ? ev.hash.substring(0, 10) + '...' : '-'}</td>
+          <td><span class="badge outcome-${this.escape(ev.outcome)}">${this.escape(ev.outcome)}</span></td>
+          <td><span class="badge sev-${this.escape(ev.severity)}">${this.escape(ev.severity)}</span></td>
+          <td class="mono">${this.escape(ev.duration_ms)}ms</td>
+          <td class="mono truncate" title="${this.escape(ev.hash)}">${this.escape(ev.hash ? ev.hash.substring(0, 10) + '...' : '-')}</td>
         </tr>
       `).join('');
     } catch (e) {
@@ -485,13 +487,25 @@ class KeyCycleApp {
     banner.style.display = 'none';
 
     try {
-      const res = await this.api('/api/audit/verify', 'POST', {});
+      let body = {};
+      try {
+        const saved = JSON.parse(localStorage.getItem('kc_audit_anchor') || 'null');
+        if (saved && Number.isInteger(saved.entry_count) && /^[0-9a-f]{64}$/.test(saved.hash)) {
+          body = { anchor_count: saved.entry_count, anchor_hash: saved.hash };
+        }
+      } catch (_) { /* storage unavailable: fall back to an unanchored check */ }
+      const res = await this.api('/api/audit/verify', 'POST', body);
+      const head = res.result?.verified_head || {};
+      try {
+        localStorage.setItem('kc_audit_anchor', JSON.stringify({ entry_count: head.entry_count, hash: head.hash }));
+      } catch (_) { /* ignore */ }
       const badge = document.getElementById('dash-verify-badge');
       if (badge) {
         badge.className = 'badge state-active';
         badge.textContent = 'VERIFIED';
       }
-      alert(`Audit Chain Verified!\nTotal Entries: ${res.result?.entry_count || res.entry_count}\nChain Head: ${res.result?.hash || res.hash}`);
+      const sources = (res.result?.anchors_checked || []).map(a => a.source).join(', ') || 'none';
+      alert(`Audit Chain Verified!\nTotal Entries: ${head.entry_count}\nChain Head: ${head.hash}\nChecked against: ${sources}`);
     } catch (err) {
       const badge = document.getElementById('dash-verify-badge');
       if (badge) {
@@ -531,13 +545,13 @@ class KeyCycleApp {
         const sizeBytes = b.size ?? b.size_bytes ?? 0;
         const opt = document.createElement('option');
         opt.value = b.name;
-        opt.textContent = `${b.name} (${sizeBytes} bytes)`;
+        opt.textContent = `${this.escape(b.name)} (${sizeBytes} bytes)`;
         sel.appendChild(opt);
 
         return `
           <tr>
             <td class="mono"><strong>${this.escape(b.name)}</strong></td>
-            <td class="mono">${sizeBytes}</td>
+            <td class="mono">${this.escape(sizeBytes)}</td>
             <td>
               <div style="display: flex; gap: 0.5rem;">
                 <button class="btn btn-secondary btn-sm" data-action="verify-backup" data-backup-name="${this.escape(b.name)}">Verify HMAC</button>
@@ -627,12 +641,12 @@ class KeyCycleApp {
       const users = await this.api('/api/users');
       tbody.innerHTML = users.map(u => `
         <tr>
-          <td class="mono">${u.id}</td>
+          <td class="mono">${this.escape(u.id)}</td>
           <td><strong>${this.escape(u.username)}</strong></td>
-          <td><span class="badge ${u.role === 'administrator' ? 'sev-warning' : 'sev-info'}">${u.role}</span></td>
+          <td><span class="badge ${u.role === 'administrator' ? 'sev-warning' : 'sev-info'}">${this.escape(u.role)}</span></td>
           <td><span class="badge ${u.disabled ? 'state-revoked' : 'state-active'}">${u.disabled ? 'DISABLED' : 'ACTIVE'}</span></td>
           <td>
-            <button class="btn btn-secondary btn-sm" data-action="toggle-user" data-user-id="${u.id}" data-disabled="${u.disabled}">
+            <button class="btn btn-secondary btn-sm" data-action="toggle-user" data-user-id="${this.escape(u.id)}" data-disabled="${this.escape(u.disabled)}">
               ${u.disabled ? 'Enable' : 'Disable'}
             </button>
           </td>
@@ -661,13 +675,13 @@ class KeyCycleApp {
         <tr>
           <td>
             <strong>${this.escape(s.label || s.name)}</strong>
-            <div class="mono hint">${s.name}</div>
+            <div class="mono hint">${this.escape(s.name)}</div>
           </td>
-          <td class="mono" style="color: var(--cyan-primary); font-weight: 700;">${s.value}</td>
-          <td class="mono hint">${s.minimum} – ${s.maximum}</td>
-          <td class="mono">v${s.version}</td>
+          <td class="mono" style="color: var(--cyan-primary); font-weight: 700;">${this.escape(s.value)}</td>
+          <td class="mono hint">${this.escape(s.minimum)} – ${this.escape(s.maximum)}</td>
+          <td class="mono">v${this.escape(s.version)}</td>
           <td>
-            <button class="btn btn-secondary btn-sm" data-action="edit-setting" data-setting-name="${s.name}" data-setting-label="${this.escape(s.label || s.name)}" data-setting-value="${s.value}" data-setting-min="${s.minimum}" data-setting-max="${s.maximum}">
+            <button class="btn btn-secondary btn-sm" data-action="edit-setting" data-setting-name="${this.escape(s.name)}" data-setting-label="${this.escape(s.label || s.name)}" data-setting-value="${this.escape(s.value)}" data-setting-min="${this.escape(s.minimum)}" data-setting-max="${this.escape(s.maximum)}">
               Edit
             </button>
           </td>
@@ -714,7 +728,7 @@ class KeyCycleApp {
   }
 
   escape(str) {
-    if (!str) return '';
+    if (str === null || str === undefined) return '';
     return String(str).replace(/[&<>"']/g, s => ({
       '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
     }[s]));
@@ -755,6 +769,29 @@ class KeyCycleApp {
     document.getElementById('btn-dash-vault').addEventListener('click', () => this.toggleVault());
     document.getElementById('btn-dash-verify').addEventListener('click', () => this.verifyAuditChain());
     document.getElementById('btn-verify-audit-full').addEventListener('click', () => this.verifyAuditChain());
+
+    // Change own password
+    document.getElementById('btn-password').addEventListener('click', () => {
+      document.getElementById('form-password').reset();
+      this.openModal('modal-password');
+    });
+    document.getElementById('form-password').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const current = document.getElementById('pw-current').value;
+      const next = document.getElementById('pw-new').value;
+      if (next !== document.getElementById('pw-confirm').value) {
+        alert('The new password and its confirmation do not match.');
+        return;
+      }
+      try {
+        const res = await this.api('/api/auth/password', 'POST', { current_password: current, new_password: next });
+        this.closeModal('modal-password');
+        document.getElementById('form-password').reset();
+        alert(`Password changed. Other sessions ended: ${res.other_sessions_ended}.`);
+      } catch (err) {
+        alert(`Password change failed: ${err.message}`);
+      }
+    });
 
     // Sign Out
     document.getElementById('btn-signout').addEventListener('click', async () => {

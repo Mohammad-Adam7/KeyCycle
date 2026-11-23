@@ -167,9 +167,27 @@ def format_json_report(data: dict[str, Any]) -> str:
     return json.dumps(data, indent=2, ensure_ascii=False)
 
 
+_FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
+
+
+def _neutralise(value):
+    """Stop spreadsheets from executing text as a formula (CSV injection)."""
+    if isinstance(value, str) and value.startswith(_FORMULA_PREFIXES):
+        return "'" + value
+    return value
+
+
+class _SafeWriter:
+    def __init__(self, buf):
+        self._writer = csv.writer(buf)
+
+    def writerow(self, row):
+        self._writer.writerow([_neutralise(cell) for cell in row])
+
+
 def format_csv_report(data: dict[str, Any]) -> str:
     buf = io.StringIO()
-    writer = csv.writer(buf)
+    writer = _SafeWriter(buf)
 
     # Metadata Header Comments
     writer.writerow(["# KeyCycle Security & Lifecycle Report"])

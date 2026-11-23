@@ -5,6 +5,7 @@ import hmac
 import json
 import os
 import re
+import secrets
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
@@ -14,7 +15,8 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 from . import audit, crypto_engine
 from .ciphertext import Package, decode_package, encode_package
-from .config import BACKUP_FORMAT, MAX_BACKUP_BYTES, MAX_BACKUP_NAME, SCHEMA_VERSION, SETTINGS
+from .config import (BACKUP_FORMAT, KDF_CEILING, MAX_BACKUP_BYTES, MAX_BACKUP_NAME, SCHEMA_VERSION,
+                     SETTINGS)
 from .db import SCHEMA
 from .vault import CHECK_AAD, CHECK_TEXT, derive
 
@@ -242,9 +244,9 @@ def key_from_passphrase(content: dict, passphrase: str) -> bytes:
     row = tables["vault"][0]
     if (type(row["time_cost"]) is not int or type(row["memory_cost"]) is not int
             or type(row["parallelism"]) is not int
-            or not 1 <= row["time_cost"] <= 10
-            or not 8 <= row["memory_cost"] <= 1024 * 1024
-            or not 1 <= row["parallelism"] <= 16
+            or not 1 <= row["time_cost"] <= KDF_CEILING["time_cost"]
+            or not 8 <= row["memory_cost"] <= KDF_CEILING["memory_cost"]
+            or not 1 <= row["parallelism"] <= KDF_CEILING["parallelism"]
             or len(row["salt"]) != 16 or len(row["check_nonce"]) != 12
             or not 16 <= len(row["check_value"]) <= 1024):
         raise BackupInvalid()
@@ -261,7 +263,11 @@ def key_from_passphrase(content: dict, passphrase: str) -> bytes:
 class Store:
     def __init__(self, folder: Path):
         self.folder = Path(folder).resolve()
-        self.folder.mkdir(parents=True, exist_ok=True)
+        self.folder.mkdir(mode=0o700, parents=True, exist_ok=True)
+        try:
+            os.chmod(self.folder, 0o700)    # owner-only, even if the folder already existed
+        except OSError:
+            pass
 
     def _path(self, name: str) -> Path:
         if (not isinstance(name, str) or len(name) > MAX_BACKUP_NAME
@@ -328,6 +334,27 @@ class Store:
         return sorted(result, key=lambda item: item["name"], reverse=True)
 
 
+def preserve_evidence(conn: sqlite3.Connection, folder: Path) -> str:
+    """Save a consistent, owner-only copy of the live database before a restore replaces a
+    log that failed verification, so the tampering can still be investigated."""
+    folder = Path(folder)
+    folder.mkdir(mode=0o700, parents=True, exist_ok=True)
+    try:
+        os.chmod(folder, 0o700)
+    except OSError:
+        pass
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    path = folder / f"tampered-{stamp}-{secrets.token_hex(4)}.db"
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    os.close(fd)
+    target = sqlite3.connect(path)
+    try:
+        conn.backup(target)
+    finally:
+        target.close()
+    return path.name
+
+
 def load_verified(store: Store, name: str, *, key: bytes | None = None,
                   passphrase: str | None = None) -> tuple[dict, dict, sqlite3.Connection]:
     envelope = parse(store.read(name))
@@ -340,6 +367,50 @@ def load_verified(store: Store, name: str, *, key: bytes | None = None,
     return envelope["content"], tables, checked
 
 
+RANK = {"viewer": 0, "operator": 1, "administrator": 2}
+
+
+def _live_restrictions(conn: sqlite3.Connection) -> dict:
+    """Capture states that must never move backwards during a restore."""
+    return {
+        "revoked": [tuple(r) for r in conn.execute(
+            "SELECT id,name,revoked_at,revoke_reason FROM keys WHERE state='revoked'")],
+        "users": [tuple(r) for r in conn.execute("SELECT id,username,role,disabled FROM users")],
+    }
+
+
+def _reapply_restrictions(conn: sqlite3.Connection, live: dict) -> dict:
+    """Restoring old data must not un-revoke a key, re-enable a disabled user or
+    raise a user's role.  The more restrictive of live and backup always wins."""
+    kept_keys = 0
+    for key_id, name, revoked_at, reason in live["revoked"]:
+        kept_keys += conn.execute(
+            "UPDATE keys SET state='revoked', revoked_at=?, revoke_reason=? "
+            "WHERE id=? AND name=? AND state<>'revoked'",
+            (revoked_at, reason, key_id, name)).rowcount
+    changes, undo = 0, []
+    for user_id, username, role, disabled in live["users"]:
+        row = conn.execute("SELECT role,disabled FROM users WHERE id=? AND username=?",
+                           (user_id, username)).fetchone()
+        if row is None:
+            continue
+        new_role = role if RANK[role] < RANK[row["role"]] else row["role"]
+        new_disabled = 1 if (disabled or row["disabled"]) else 0
+        if (new_role, new_disabled) != (row["role"], row["disabled"]):
+            undo.append((row["role"], row["disabled"], user_id))
+            conn.execute("UPDATE users SET role=?, disabled=? WHERE id=?", (new_role, new_disabled, user_id))
+            changes += 1
+    kept_users = True
+    if changes and conn.execute(
+            "SELECT 1 FROM users WHERE role='administrator' AND disabled=0 LIMIT 1").fetchone() is None:
+        # Never lock everyone out: fall back to the backup's own user states.
+        for old_role, old_disabled, user_id in undo:
+            conn.execute("UPDATE users SET role=?, disabled=? WHERE id=?", (old_role, old_disabled, user_id))
+        kept_users, changes = False, 0
+    return {"revocations_preserved": kept_keys, "user_restrictions_preserved": changes,
+            "user_restrictions_applied": kept_users}
+
+
 def restore(conn: sqlite3.Connection, tables: dict, content: dict) -> dict:
     live = audit.verify(conn)
     backup_head = content["chain_head"]
@@ -348,6 +419,7 @@ def restore(conn: sqlite3.Connection, tables: dict, content: dict) -> dict:
                               (backup_head["entry_count"],)).fetchone()
         if prefix is None or prefix["hash"] != backup_head["hash"]:
             raise BackupInvalid()
+    restrictions = _live_restrictions(conn)
     conn.execute("DELETE FROM confirmations")
     conn.execute("DELETE FROM sessions")
     conn.execute("DELETE FROM failures")
@@ -362,6 +434,7 @@ def restore(conn: sqlite3.Connection, tables: dict, content: dict) -> dict:
         for row in tables[table]:
             conn.execute(f"INSERT INTO {table}({','.join(columns)}) VALUES ({marks})",
                          tuple(row[column] for column in columns))
+    preserved = _reapply_restrictions(conn, restrictions)
     replaced_audit = not live["valid"] or live["entry_count"] == 0
     if replaced_audit:
         conn.execute("DROP TRIGGER audit_no_delete")
@@ -376,7 +449,7 @@ def restore(conn: sqlite3.Connection, tables: dict, content: dict) -> dict:
         conn.execute("UPDATE sqlite_sequence SET seq=? WHERE name='audit_events'",
                      (backup_head["entry_count"],))
     return {"live_head_before": {"entry_count": live["entry_count"], "hash": live["hash"]},
-            "backup_head": backup_head, "audit_replaced": replaced_audit}
+            "backup_head": backup_head, "audit_replaced": replaced_audit, **preserved}
 
 
 def verify_recovery_proof(checked: sqlite3.Connection, content: dict, passphrase: str) -> bool:

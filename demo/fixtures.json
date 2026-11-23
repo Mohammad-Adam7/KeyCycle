@@ -1,0 +1,14 @@
+{
+  "keys": {
+    "payroll-key": 1,
+    "finance-key": 2,
+    "backup-key": 3,
+    "legacy-api": 4,
+    "test-key": 5,
+    "archive-2026": 6
+  },
+  "retired_version_package": "kc1.1.1.b25srY8sE4jP3Yu4.Mpt0P3o9kEPk-1fUzBVIy-vFXp6pYX9KisZRUCDSO-GQHPQiy2GItw",
+  "altered_ciphertext": "kc1.1.1.b25srY8sE4jP3Yu4.M5t0P3o9kEPk-1fUzBVIy-vFXp6pYX9KisZRUCDSO-GQHPQiy2GItw",
+  "altered_version": "kc1.1.2.b25srY8sE4jP3Yu4.Mpt0P3o9kEPk-1fUzBVIy-vFXp6pYX9KisZRUCDSO-GQHPQiy2GItw",
+  "altered_key": "kc1.2.1.b25srY8sE4jP3Yu4.Mpt0P3o9kEPk-1fUzBVIy-vFXp6pYX9KisZRUCDSO-GQHPQiy2GItw"
+}
