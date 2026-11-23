@@ -803,7 +803,7 @@ class KeyCycleApp {
         if (this.chain) await new Promise((r) => gsap.to(this.chain.state, { v: this.chain.n, duration: this.RM ? 0 : 1.4, ease: 'none', onComplete: r }));
         this.$('#chain-verdict').textContent = text; this.$('#chain-count').textContent = res.chain_head.entry_count.toLocaleString(); this.$('#chain-hash').textContent = res.chain_head.hash;
       }
-      this.toast('Audit chain verified', 'ok', `${head.entry_count} entries`);
+      this.toast('Audit chain verified', 'ok', head.entry_count + ' entries' + (sources.length ? ', matches ' + sources.join(' and ') : ''));
       return { ok: true, res };
     } catch (err) {
       if (err.code === 'TAMPER_DETECTED') {
