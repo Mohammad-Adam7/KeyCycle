@@ -1041,9 +1041,9 @@ class KeyCycleApp {
     data.addEventListener('input', count); count();
     this.$('#enc-out').innerHTML = this.isAdmin() ? '<p class="decision muted">Administrators may only use test keys. Operators use standard keys.</p>' : '';
     this.$('#enc-go').addEventListener('click', () => this.doEncrypt());
-    this.$('#ddeecc-go').addEventListener('click', () => this.doDecrypt());
-    this.$('#ddeecc-tamper').addEventListener('click', () => {
-      const t = this.$('#ddeecc-pkg'), v = t.value.trim(); if (!v) return;
+    this.$('#dec-go').addEventListener('click', () => this.doDecrypt());
+    this.$('#dec-tamper').addEventListener('click', () => {
+      const t = this.$('#dec-pkg'), v = t.value.trim(); if (!v) return;
       const i = Math.max(0, v.length - 6), c = v[i] === 'A' ? 'B' : 'A'; t.value = v.slice(0, i) + c + v.slice(i + 1);
       this.toast('One character changed in the ciphertext');
     });
@@ -1113,14 +1113,14 @@ class KeyCycleApp {
       const pkg = res.data.package;
       out.innerHTML = `<div class="pkg">${this.pkgHTML(pkg)}</div><div class="legend"><span><i style="background:var(--ink-3)"></i>format</span><span><i style="background:var(--gold)"></i>key id and version, bound in</span><span><i style="background:var(--patina)"></i>nonce</span><span><i style="background:var(--ink)"></i>ciphertext and tag</span></div>${this.decisionLine(res.result)}<div style="display:flex;gap:14px;margin-top:6px"><button class="linkbtn" type="button" id="send-open">Open it on the right</button><button class="linkbtn" type="button" id="copy-pkg">Copy</button></div>`;
       if (!this.RM) gsap.from(this.$$('#enc-out .pkg span'), { opacity: 0, y: 6, stagger: 0.08, duration: 0.4 });
-      this.$('#send-open').addEventListener('click', () => { this.$('#ddeecc-pkg').value = pkg; if (!this.RM) gsap.fromTo('#ddeecc-pkg', { backgroundColor: 'rgba(64,112,174,.3)' }, { backgroundColor: 'rgba(215,222,230,1)', duration: 1, clearProps: 'backgroundColor' }); });
+      this.$('#send-open').addEventListener('click', () => { this.$('#dec-pkg').value = pkg; if (!this.RM) gsap.fromTo('#dec-pkg', { backgroundColor: 'rgba(64,112,174,.3)' }, { backgroundColor: 'rgba(215,222,230,1)', duration: 1, clearProps: 'backgroundColor' }); });
       this.$('#copy-pkg').addEventListener('click', () => { if (navigator.clipboard) navigator.clipboard.writeText(pkg).then(() => this.toast('Package copied')); });
     } catch (err) {
       out.innerHTML = (err.body && err.body.result ? this.decisionLine(err.body.result) : `<p class="decision"><span class="chip no"><i></i>Refused</span> <code>${this.escape(err.code)}</code></p>`) + `<p class="muted" style="font-size:13px;margin:4px 0 0">${this.escape(this.explain(err))}</p>`;
     } finally { go.classList.remove('busy'); }
   }
   async doDecrypt() {
-    const pkg = this.$('#ddeecc-pkg').value.trim(), out = this.$('#ddeecc-out'), go = this.$('#ddeecc-go');
+    const pkg = this.$('#dec-pkg').value.trim(), out = this.$('#dec-out'), go = this.$('#dec-go');
     if (!pkg) { out.innerHTML = '<p class="decision muted">Paste a package first.</p>'; return; }
     go.classList.add('busy');
     try {
@@ -1128,7 +1128,7 @@ class KeyCycleApp {
       out.innerHTML = `<div class="pkg" style="color:var(--ink);white-space:pre-wrap">${this.escape(res.data.plaintext)}</div>${this.decisionLine(res.result)}`;
     } catch (err) {
       out.innerHTML = err.body && err.body.result ? this.decisionLine(err.body.result) : `<p class="decision"><span class="chip no"><i></i>Refused</span> <code>${this.escape(err.code)}</code></p><p class="muted" style="font-size:13px;margin:4px 0 0">${this.escape(this.explain(err))}</p>`;
-      if (!this.RM) gsap.fromTo('#ddeecc-pkg', { x: -6 }, { x: 0, duration: 0.4, ease: 'elastic.out(1, 0.3)' });
+      if (!this.RM) gsap.fromTo('#dec-pkg', { x: -6 }, { x: 0, duration: 0.4, ease: 'elastic.out(1, 0.3)' });
     } finally { go.classList.remove('busy'); }
   }
 
