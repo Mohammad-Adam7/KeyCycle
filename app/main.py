@@ -99,6 +99,8 @@ def create_app(db_path: str | None = None, *, scheduler_interval: float = 30.0) 
             resp.headers[k] = v
         if request.url.path.startswith("/api"):
             resp.headers["Cache-Control"] = "no-store"
+        elif request.url.path.startswith("/static/"):
+            resp.headers["Cache-Control"] = "no-cache"
         return resp
 
     @app.exception_handler(AppError)
