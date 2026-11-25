@@ -63,7 +63,7 @@ window.KCLanding = (() => {
   const pmrem = new THREE.PMREMGenerator(renderer);
   const env = new THREE.Scene();
   const sg = new THREE.SphereGeometry(20, 32, 16);
-  const cols = [], pa = sg.attributes.position, lo = new THREE.Color(0x0b0e11), hi = new THREE.Color(0x5a5348);
+  const cols = [], pa = sg.attributes.position, lo = new THREE.Color(0x0b0e11), hi = new THREE.Color(0x2c4c76);
   for (let i = 0; i < pa.count; i++) { const t = (pa.getY(i) / 20 + 1) / 2; const c = lo.clone().lerp(hi, t); cols.push(c.r, c.g, c.b); }
   sg.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3));
   env.add(new THREE.Mesh(sg, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide })));
@@ -71,9 +71,9 @@ window.KCLanding = (() => {
   softbox(0, 9, 5, 12, 4, 3.2); softbox(-11, 2, 3, 4, 9, 1.6); softbox(10, -3, 6, 3, 9, 1.2); softbox(0, -6, 10, 10, 2, 0.6);
   scene.environment = pmrem.fromScene(env, 0.04).texture;
   scene.add(new THREE.AmbientLight(0xffffff, 0.15));
-  const sun = new THREE.DirectionalLight(0xfff1dc, 1.4); sun.position.set(-4, 6, 8); scene.add(sun);
+  const sun = new THREE.DirectionalLight(0xeaedf1, 1.4); sun.position.set(-4, 6, 8); scene.add(sun);
 
-  const REDDK = new THREE.Color(0x6e1824).convertSRGBToLinear(), BRASS = new THREE.Color(0xc9a35b), DULL = new THREE.Color(0x7d8287), GLOW = new THREE.Color(0xffb04a), RED = new THREE.Color(0xd6452f);
+  const REDDK = new THREE.Color(0x1f3a5c).convertSRGBToLinear(), BRASS = new THREE.Color(0x6d8db7), DULL = new THREE.Color(0x7d8287), GLOW = new THREE.Color(0x86a0c3), RED = new THREE.Color(0xd6452f);
   const brass = new THREE.MeshStandardMaterial({ color: BRASS.clone(), metalness: 1, roughness: 0.26, envMapIntensity: 1.25 });
 
   // key, built from primitives, centred on its length
@@ -97,12 +97,12 @@ window.KCLanding = (() => {
   // so lights would flood the inside of the tunnel as if it had no roof.
   const gradTex = (w, h, paint) => { const c = document.createElement('canvas'); c.width = w; c.height = h; paint(c.getContext('2d'), w, h); const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; return t; };
   const tunnelTex = gradTex(8, 256, (x, w, h) => { const gr = x.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#8b8f90'); gr.addColorStop(0.25, '#4b4f52'); gr.addColorStop(1, '#141618'); x.fillStyle = gr; x.fillRect(0, 0, w, h); });
-  const wallTex = gradTex(256, 256, (x, w, h) => { const gr = x.createRadialGradient(128, 110, 10, 128, 128, 140); gr.addColorStop(0, '#5a4630'); gr.addColorStop(0.55, '#2a241d'); gr.addColorStop(1, '#0f1112'); x.fillStyle = gr; x.fillRect(0, 0, w, h); });
+  const wallTex = gradTex(256, 256, (x, w, h) => { const gr = x.createRadialGradient(128, 110, 10, 128, 128, 140); gr.addColorStop(0, '#234068'); gr.addColorStop(0.55, '#122135'); gr.addColorStop(1, '#0f1112'); x.fillStyle = gr; x.fillRect(0, 0, w, h); });
   const steelIn = new THREE.MeshBasicMaterial({ map: tunnelTex, side: THREE.BackSide, color: 0x000000 });
   const backWall = new THREE.MeshBasicMaterial({ map: wallTex, color: 0x000000 });
-  const boxMat = new THREE.MeshStandardMaterial({ color: 0x7a6040, metalness: 0.9, roughness: 0.38, envMapIntensity: 0.2 });
+  const boxMat = new THREE.MeshStandardMaterial({ color: 0x325788, metalness: 0.9, roughness: 0.38, envMapIntensity: 0.2 });
   const black = new THREE.MeshBasicMaterial({ color: 0x050505 });
-  const fitting = new THREE.MeshStandardMaterial({ color: 0xc9a35b, metalness: 1, roughness: 0.3, envMapIntensity: 1.2 });
+  const fitting = new THREE.MeshStandardMaterial({ color: 0x6d8db7, metalness: 1, roughness: 0.3, envMapIntensity: 1.2 });
   const vault = new THREE.Group(); vault.rotation.y = -0.55;
 
   // collar: an extruded ring with real thickness
@@ -114,13 +114,13 @@ window.KCLanding = (() => {
   // tunnel, ribs and the strong-room wall at the back
   add(vault, new THREE.CylinderGeometry(2.2, 2.2, 3.4, 96, 1, true), steelIn, 0, 0, -1.7, Math.PI / 2);
   [-1.1, -2.3].forEach(z => add(vault, new THREE.TorusGeometry(2.17, 0.045, 10, 96), steel, 0, 0, z));
-  const lampMat = new THREE.MeshBasicMaterial({ color: 0xffcf8a, transparent: true, opacity: 0 });
+  const lampMat = new THREE.MeshBasicMaterial({ color: 0xb1c2d8, transparent: true, opacity: 0 });
   add(vault, new THREE.TorusGeometry(2.14, 0.025, 8, 120), lampMat, 0, 0, -0.25);
   add(vault, new THREE.CircleGeometry(2.21, 96), backWall, 0, 0, -3.4);
   // the store: every key version hangs on its own hook, with a maroon owner tag beside it
   const pegGeo = new THREE.CylinderGeometry(0.018, 0.018, 0.14, 8), tagGeo = new THREE.BoxGeometry(0.07, 0.1, 0.012);
-  const tagMat = new THREE.MeshBasicMaterial({ color: 0x000000 }); const TAG = new THREE.Color(0x6e1824).convertSRGBToLinear();
-  const miniMat = new THREE.MeshStandardMaterial({ color: 0xc9a35b, metalness: 1, roughness: 0.28, envMapIntensity: 0.9, emissive: 0x3a2506 });
+  const tagMat = new THREE.MeshBasicMaterial({ color: 0x000000 }); const TAG = new THREE.Color(0x1f3a5c).convertSRGBToLinear();
+  const miniMat = new THREE.MeshStandardMaterial({ color: 0x6d8db7, metalness: 1, roughness: 0.28, envMapIntensity: 0.9, emissive: 0x101e30 });
   let hookN = 0;
   for (let y = 1.25; y >= -1.6; y -= 0.95) for (let x = -1.89; x <= 1.9; x += 0.42) {
     if (Math.hypot(Math.abs(x) + 0.12, Math.abs(y) + (y > 0 ? 0.15 : 0.6)) > 2.08) continue;
@@ -165,8 +165,8 @@ window.KCLanding = (() => {
   add(plug, new THREE.CircleGeometry(0.54, 64), black, 0, 0, -0.004);
   const keyhole = new THREE.Object3D(); keyhole.position.set(0, LOCK_Y, FRONT + 0.07); door.add(keyhole);
 
-  const vLight = new THREE.PointLight(0xffc477, 0, 9, 1.6); vLight.position.set(0, 1.1, -1.4); vault.add(vLight);
-  const vLight2 = new THREE.PointLight(0xffd9a0, 0, 5, 1.6); vLight2.position.set(0, -0.4, -2.4); vault.add(vLight2);
+  const vLight = new THREE.PointLight(0xa4b8d2, 0, 9, 1.6); vLight.position.set(0, 1.1, -1.4); vault.add(vLight);
+  const vLight2 = new THREE.PointLight(0xc3cedc, 0, 5, 1.6); vLight2.position.set(0, -0.4, -2.4); vault.add(vLight2);
   scene.add(vault);
 
   /* ---------- passphrase rig: keyboard, flip tiles, Argon2id memory disk ---------- */
@@ -197,10 +197,10 @@ window.KCLanding = (() => {
 
   // input tiles: the typed character on the front, a mask dot on the back
   const tileGeo = new THREE.BoxGeometry(0.3, 0.4, 0.07);
-  const tileEdge = new THREE.MeshLambertMaterial({ color: new THREE.Color(0x7a1d2a).convertSRGBToLinear() });
-  const dotMat = new THREE.MeshStandardMaterial({ map: glyph('•', '#f4ead7', '#7a1d2a'), roughness: 0.6, envMapIntensity: 0.6 });
+  const tileEdge = new THREE.MeshLambertMaterial({ color: new THREE.Color(0x234168).convertSRGBToLinear() });
+  const dotMat = new THREE.MeshStandardMaterial({ map: glyph('•', '#e0e5eb', '#234168'), roughness: 0.6, envMapIntensity: 0.6 });
   const tiles = [...PHRASE].map((ch, i) => {
-    const front = new THREE.MeshStandardMaterial({ map: glyph(ch, '#f4ead7', '#4a1019'), roughness: 0.6, envMapIntensity: 0.6 });
+    const front = new THREE.MeshStandardMaterial({ map: glyph(ch, '#e0e5eb', '#172a44'), roughness: 0.6, envMapIntensity: 0.6 });
     const m = new THREE.Mesh(tileGeo, [tileEdge, tileEdge, tileEdge, tileEdge, front, dotMat]);
     m.userData.home = new THREE.Vector3((i - (PHRASE.length - 1) / 2) * 0.34, 1.75, 0);
     m.userData.seed = i * 1.7;
@@ -216,8 +216,8 @@ window.KCLanding = (() => {
     [['', 2.2]].concat([...'zxcvbnm'].map(c => [c, 1]), [['', 3.7]]),
     [['', 3.9], ['', 5.6], ['', 3.4]],
   ];
-  const caseMat = new THREE.MeshLambertMaterial({ color: new THREE.Color(0x5c1220).convertSRGBToLinear() });   // r128 reads hex as linear
-  const capMat = new THREE.MeshStandardMaterial({ color: 0xf1e6d1, metalness: 0, roughness: 0.5, envMapIntensity: 0.7 });
+  const caseMat = new THREE.MeshLambertMaterial({ color: new THREE.Color(0x1c3352).convertSRGBToLinear() });   // r128 reads hex as linear
+  const capMat = new THREE.MeshStandardMaterial({ color: 0xdae0e8, metalness: 0, roughness: 0.5, envMapIntensity: 0.7 });
   const caseGeo = new THREE.ExtrudeGeometry(roundRect(12.9 * U + 0.36, 5 * U + 0.36, 0.16), { depth: 0.16, bevelEnabled: true, bevelThickness: 0.05, bevelSize: 0.05, bevelSegments: 4, curveSegments: 12 });
   add(kb, caseGeo, caseMat, 0, -0.14, 0, -Math.PI / 2);
   const capGeos = {};
@@ -231,7 +231,7 @@ window.KCLanding = (() => {
       cap.position.set(x + (w * U) / 2, 0.02, (r - 2) * U);
       add(cap, capGeo(w), capMat, 0, 0, 0, -Math.PI / 2);
       if (ch) {
-        const lm = new THREE.MeshStandardMaterial({ map: glyph(ch, null, '#5a1520', 80), transparent: true, roughness: 0.5, emissive: 0x000000 });
+        const lm = new THREE.MeshStandardMaterial({ map: glyph(ch, null, '#1c3453', 80), transparent: true, roughness: 0.5, emissive: 0x000000 });
         add(cap, legendGeo, lm, 0, 0.142, 0, -Math.PI / 2);
         cap.userData.legend = lm; caps[ch] = cap;
       }
@@ -239,7 +239,7 @@ window.KCLanding = (() => {
     });
   });
   const capKeys = Object.keys(caps);
-  const kbLight = new THREE.PointLight(0xffc477, 0, 3, 2); kb.add(kbLight);
+  const kbLight = new THREE.PointLight(0xa4b8d2, 0, 3, 2); kb.add(kbLight);
 
   // Argon2id as a cryptex: four rings are the four lanes, each ring face is a memory block.
   // Every pass turns all four rings to new positions and re-inks them; after the third pass they
@@ -254,21 +254,21 @@ window.KCLanding = (() => {
     const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; t.anisotropy = 4;
     const draw = () => {
       const x = c.getContext('2d');
-      x.fillStyle = '#f3e8d3'; x.fillRect(0, 0, 1024, 160);
+      x.fillStyle = '#dde2e9'; x.fillRect(0, 0, 1024, 160);
       for (let i = 0; i < CELLS; i++) {
         const cx = i * 64 + 32;
-        x.fillStyle = 'rgba(74,16,25,0.10)'; x.fillRect(i * 64, 0, 1.5, 160);
+        x.fillStyle = 'rgba(23,42,68,0.10)'; x.fillRect(i * 64, 0, 1.5, 160);
         const txt = i === 0 ? ALIGNED[L] : HEX[(i * 7 + L * 5) % 16] + HEX[(i * 11 + L * 3 + 4) % 16];
         x.save(); x.translate(cx, 80); x.rotate(Math.PI / 2);
-        x.fillStyle = '#4a1019'; x.font = "500 46px 'JetBrains Mono', ui-monospace, monospace"; x.textAlign = 'center'; x.textBaseline = 'middle';
+        x.fillStyle = '#172a44'; x.font = "500 46px 'JetBrains Mono', ui-monospace, monospace"; x.textAlign = 'center'; x.textBaseline = 'middle';
         x.fillText(txt, 0, 2); x.restore();
       }
       t.needsUpdate = true;
     };
     draw(); redraws.push(draw); return t;
   };
-  const brassM = new THREE.MeshStandardMaterial({ color: 0xc9a35b, metalness: 1, roughness: 0.28, envMapIntensity: 1.2 });
-  const capFace = new THREE.MeshLambertMaterial({ color: lin(0x5c1220) });
+  const brassM = new THREE.MeshStandardMaterial({ color: 0x6d8db7, metalness: 1, roughness: 0.28, envMapIntensity: 1.2 });
+  const capFace = new THREE.MeshLambertMaterial({ color: lin(0x1c3352) });
   const rings = LANE_X.map((x, L) => {
     const g = new THREE.Group(); g.position.x = x; crypt.add(g);
     const side = new THREE.MeshStandardMaterial({ map: ringTex(L), roughness: 0.55, metalness: 0, envMapIntensity: 0.5, flatShading: true, emissive: 0x000000 });
@@ -292,7 +292,7 @@ window.KCLanding = (() => {
   const rail = new THREE.BoxGeometry(2.9, 0.035, 0.05);
   const railA = add(crypt, rail, brassM, 0, 0.19, RING_R + 0.04), railB = add(crypt, rail, brassM, 0, -0.19, RING_R + 0.04);
   const haloTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d'), gr = x.createRadialGradient(64, 64, 0, 64, 64, 64);
-    gr.addColorStop(0, 'rgba(255,214,140,1)'); gr.addColorStop(0.35, 'rgba(255,190,100,0.45)'); gr.addColorStop(1, 'rgba(255,190,100,0)'); x.fillStyle = gr; x.fillRect(0, 0, 128, 128);
+    gr.addColorStop(0, 'rgba(178,195,217,1)'); gr.addColorStop(0.35, 'rgba(151,174,204,0.45)'); gr.addColorStop(1, 'rgba(151,174,204,0)'); x.fillStyle = gr; x.fillRect(0, 0, 128, 128);
     const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; return t; })();
   const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: haloTex, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending }));
   halo.scale.set(4.4, 2.6, 1); crypt.add(halo);
@@ -304,7 +304,7 @@ window.KCLanding = (() => {
   const TURNS = [[5, -7, 3, 9], [-4, 6, -11, 2], [8, -3, 5, -6]];
   const CUM = [[0, 0, 0, 0]]; TURNS.forEach((t, k) => CUM.push(CUM[k].map((v, L) => v + t[L])));
   const FACE = 0.5;          // cell index that faces the window at angle 0 (set from the texture layout)
-  const PASS_COL = [0xf3e8d3, 0xf0cf8c, 0xe7a66a, 0xf6d36a].map(lin);
+  const PASS_COL = [0xdde2e9, 0xa8bbd4, 0x8ba5c6, 0x95accb].map(lin);
   const clamp01 = (x) => Math.max(0, Math.min(1, x));
   const bump = (x) => (x > 0 && x < 1 ? Math.sin(Math.PI * x) : 0);
   const outBack = (x) => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2); };
@@ -382,7 +382,7 @@ window.KCLanding = (() => {
   renderer.localClippingEnabled = true;
   const lifeG = new THREE.Group(); scene.add(lifeG);
   // Rotated: the retired version steps back as a translucent ghost
-  const ghostMat = new THREE.MeshStandardMaterial({ color: lin(0xa7a29a), metalness: 0.5, roughness: 0.5, transparent: true, opacity: 0, depthWrite: false });
+  const ghostMat = new THREE.MeshStandardMaterial({ color: lin(0x809cc1), metalness: 0.5, roughness: 0.5, transparent: true, opacity: 0, depthWrite: false });
   const ghost = key.clone(); ghost.traverse(o => { if (o.isMesh) o.material = ghostMat; }); scene.add(ghost);
   // Revoked: two halves of the key, each clipped at the break
   const halfPlanes = [new THREE.Plane(), new THREE.Plane()];
@@ -390,19 +390,19 @@ window.KCLanding = (() => {
   const halves = halfMats.map(m => { const h = key.clone(); h.rotation.order = 'YXZ'; h.traverse(o => { if (o.isMesh) o.material = m; }); scene.add(h); return h; });
   // Created: the key is printed from bow to tip behind a ring of light
   const printPlane = new THREE.Plane();
-  const printRing = add(key, new THREE.TorusGeometry(1, 0.04, 8, 72), new THREE.MeshBasicMaterial({ color: 0xffc56e, transparent: true, opacity: 0, depthWrite: false }), 0, 0, 0, 0, Math.PI / 2, 0);
+  const printRing = add(key, new THREE.TorusGeometry(1, 0.04, 8, 72), new THREE.MeshBasicMaterial({ color: 0x9eb3cf, transparent: true, opacity: 0, depthWrite: false }), 0, 0, 0, 0, Math.PI / 2, 0);
   // In use: plain data tiles pass through the key and come out sealed
   const PKT = 7, pktGeo = new THREE.BoxGeometry(0.46, 0.6, 0.08);
-  const pktEdge = new THREE.MeshLambertMaterial({ color: lin(0xe8dbc0) });
-  const sealFace = new THREE.MeshStandardMaterial({ map: glyph('•', '#7a1d2a', '#f4ead7'), roughness: 0.6, envMapIntensity: 0.5 });
+  const pktEdge = new THREE.MeshLambertMaterial({ color: lin(0xc9d3df) });
+  const sealFace = new THREE.MeshStandardMaterial({ map: glyph('•', '#234168', '#e0e5eb'), roughness: 0.6, envMapIntensity: 0.5 });
   const packets = [...'payroll'].map((ch, i) => {
-    const face = new THREE.MeshStandardMaterial({ map: glyph(ch, '#f4ead7', '#4a1019'), roughness: 0.6, envMapIntensity: 0.6 });
+    const face = new THREE.MeshStandardMaterial({ map: glyph(ch, '#e0e5eb', '#172a44'), roughness: 0.6, envMapIntensity: 0.6 });
     const m = new THREE.Mesh(pktGeo, [pktEdge, pktEdge, pktEdge, pktEdge, face, face]);
     m.userData.plain = m.material; m.userData.sealed = [tileEdge, tileEdge, tileEdge, tileEdge, sealFace, sealFace];
     lifeG.add(m); return m;
   });
   // Expired: a ring of ticks that runs down
-  const TICKS = 48, tickGeo = new THREE.BoxGeometry(0.07, 0.26, 0.05), tickOff = new THREE.MeshLambertMaterial({ color: lin(0xcfc6b5) });
+  const TICKS = 48, tickGeo = new THREE.BoxGeometry(0.07, 0.26, 0.05), tickOff = new THREE.MeshLambertMaterial({ color: lin(0xadbfd7) });
   const ticks = [];
   for (let i = 0; i < TICKS; i++) {
     const a = Math.PI / 2 - (i / TICKS) * Math.PI * 2;
@@ -411,7 +411,7 @@ window.KCLanding = (() => {
   }
   // Revoked: a maroon wax seal with a cross
   const seal = new THREE.Group(); scene.add(seal);
-  const waxM = new THREE.MeshLambertMaterial({ color: lin(0x7a1d2a) }), waxD = new THREE.MeshLambertMaterial({ color: lin(0x55101b) });
+  const waxM = new THREE.MeshLambertMaterial({ color: lin(0x234168) }), waxD = new THREE.MeshLambertMaterial({ color: lin(0x192f4c) });
   add(seal, new THREE.CylinderGeometry(0.55, 0.58, 0.12, 40), waxM, 0, 0, 0, Math.PI / 2);
   add(seal, new THREE.TorusGeometry(0.42, 0.035, 8, 40), waxD, 0, 0, 0.07);
   add(seal, new THREE.BoxGeometry(0.5, 0.08, 0.05), waxD, 0, 0, 0.08, 0, 0, Math.PI / 4);
@@ -504,27 +504,27 @@ window.KCLanding = (() => {
   const WIN = { x: 600, y: 400, w: 360, h: 112 };
   const altPos = { x: 0, y: 0 };                    // where the changed character sits, in canvas pixels
   const envFront = (variant) => canvasTex(FRONT_W, FRONT_H, (x, w, h) => {
-    paperFill(x, w, h, '#f3e8d2');
+    paperFill(x, w, h, '#dce2e9');
     // the back folds of the envelope, so the paper reads as layered
-    x.fillStyle = 'rgba(120,80,50,0.05)'; x.beginPath(); x.moveTo(0, h); x.lineTo(w * 0.44, h * 0.52); x.lineTo(w * 0.56, h * 0.52); x.lineTo(w, h); x.closePath(); x.fill();
-    x.strokeStyle = 'rgba(74,16,25,0.13)'; x.lineWidth = 2; x.beginPath(); x.moveTo(0, h); x.lineTo(w * 0.44, h * 0.52); x.lineTo(w * 0.56, h * 0.52); x.lineTo(w, h); x.stroke();
-    x.strokeStyle = 'rgba(74,16,25,0.16)'; x.lineWidth = 2; x.strokeRect(18, 18, w - 36, h - 36);
+    x.fillStyle = 'rgba(46,80,124,0.05)'; x.beginPath(); x.moveTo(0, h); x.lineTo(w * 0.44, h * 0.52); x.lineTo(w * 0.56, h * 0.52); x.lineTo(w, h); x.closePath(); x.fill();
+    x.strokeStyle = 'rgba(23,42,68,0.13)'; x.lineWidth = 2; x.beginPath(); x.moveTo(0, h); x.lineTo(w * 0.44, h * 0.52); x.lineTo(w * 0.56, h * 0.52); x.lineTo(w, h); x.stroke();
+    x.strokeStyle = 'rgba(23,42,68,0.16)'; x.lineWidth = 2; x.strokeRect(18, 18, w - 36, h - 36);
     // postmark: the nonce, used once
     const px = 812, py = 232;
-    x.strokeStyle = 'rgba(122,29,42,0.75)'; x.lineWidth = 3;
+    x.strokeStyle = 'rgba(35,65,104,0.75)'; x.lineWidth = 3;
     for (let k = 0; k < 4; k++) { x.beginPath(); for (let s = 0; s <= 60; s++) { const xx = px - 330 + s * 4.2; x.lineTo(xx, py - 30 + k * 20 + Math.sin(s * 0.5) * 5); } x.stroke(); }
-    x.fillStyle = '#f3e8d2'; x.beginPath(); x.arc(px, py, 80, 0, Math.PI * 2); x.fill();
+    x.fillStyle = '#dce2e9'; x.beginPath(); x.arc(px, py, 80, 0, Math.PI * 2); x.fill();
     x.beginPath(); x.arc(px, py, 78, 0, Math.PI * 2); x.stroke(); x.beginPath(); x.arc(px, py, 64, 0, Math.PI * 2); x.stroke();
-    x.fillStyle = 'rgba(122,29,42,0.85)'; x.textAlign = 'center'; x.textBaseline = 'middle';
+    x.fillStyle = 'rgba(35,65,104,0.85)'; x.textAlign = 'center'; x.textBaseline = 'middle';
     x.font = "600 22px 'Hanken Grotesk', system-ui, sans-serif"; x.fillText('NONCE', px, py - 18);
     x.font = "500 19px 'JetBrains Mono', ui-monospace, monospace"; x.fillText('Qm9Xr2tLp1Va', px, py + 12);
     // address: the key id and version
     const ax = 96, ab = 430;
-    x.textAlign = 'left'; x.textBaseline = 'alphabetic'; x.fillStyle = '#5a1520';
-    x.font = "120px 'Pinyon Script', 'Snell Roundhand', cursive";
+    x.textAlign = 'left'; x.textBaseline = 'alphabetic'; x.fillStyle = '#1c3453';
+    x.font = "700 100px 'Hanken Grotesk', system-ui, sans-serif";
     const pre = x.measureText('Key '), m7 = x.measureText('7');
     x.fillText('Key 7', ax, ab);
-    x.font = "500 34px 'Hanken Grotesk', system-ui, sans-serif"; x.fillStyle = '#7a3a42'; x.fillText('version 3', ax + 12, ab + 70);
+    x.font = "500 34px 'Hanken Grotesk', system-ui, sans-serif"; x.fillStyle = '#2d4e79'; x.fillText('version 3', ax + 12, ab + 70);
     if (variant === 'readdressed') {
       // strike through the 7 using its measured ink box, then write the 9 just after it
       const l = ax + pre.width - m7.actualBoundingBoxLeft, r = ax + pre.width + m7.actualBoundingBoxRight;
@@ -532,16 +532,16 @@ window.KCLanding = (() => {
       const cx = (l + r) / 2, cy = (t + bt) / 2, hw = (r - l) / 2 + 14, hh = (bt - t) / 2 + 4;
       x.strokeStyle = '#c2451e'; x.lineWidth = 7; x.lineCap = 'round';
       x.beginPath(); x.moveTo(cx - hw, cy + hh * 0.75); x.lineTo(cx + hw, cy - hh * 0.75); x.stroke();
-      x.fillStyle = '#c2451e'; x.font = "120px 'Pinyon Script', 'Snell Roundhand', cursive"; x.fillText('9', r + 22, ab);
+      x.fillStyle = '#c2451e'; x.font = "700 100px 'Hanken Grotesk', system-ui, sans-serif"; x.fillText('9', r + 22, ab);
     }
     // window: the ciphertext and tag
     const { x: wx, y: wy, w: ww, h: wh } = WIN;
-    x.fillStyle = 'rgba(226,216,194,0.95)'; x.fillRect(wx, wy, ww, wh);
-    x.strokeStyle = 'rgba(74,16,25,0.25)'; x.lineWidth = 2; x.strokeRect(wx, wy, ww, wh);
+    x.fillStyle = 'rgba(199,209,221,0.95)'; x.fillRect(wx, wy, ww, wh);
+    x.strokeStyle = 'rgba(23,42,68,0.25)'; x.lineWidth = 2; x.strokeRect(wx, wy, ww, wh);
     x.fillStyle = 'rgba(255,255,255,0.35)'; x.fillRect(wx + 6, wy + 6, ww - 12, 10);
     x.textAlign = 'left'; x.textBaseline = 'middle';
     const base = "500 30px 'JetBrains Mono', ui-monospace, monospace", big = "700 46px 'JetBrains Mono', ui-monospace, monospace";
-    const parts = variant === 'altered' ? [['c3Vw', base, '#4a1019'], ['a', big, '#c2451e'], ['XJzZW…8fK2', base, '#4a1019']] : [['c3VwZXJzZW…8fK2', base, '#4a1019']];
+    const parts = variant === 'altered' ? [['c3Vw', base, '#172a44'], ['a', big, '#c2451e'], ['XJzZW…8fK2', base, '#172a44']] : [['c3VwZXJzZW…8fK2', base, '#172a44']];
     const widths = parts.map(([s2, f]) => { x.font = f; return x.measureText(s2).width; });
     let tx = wx + ww / 2 - widths.reduce((a, b) => a + b, 0) / 2;
     parts.forEach(([s2, f, col], i) => {
@@ -554,14 +554,14 @@ window.KCLanding = (() => {
     });
   });
   const frontTex = { ok: envFront('ok'), readdressed: envFront('readdressed'), altered: envFront('altered') };
-  const creamM = new THREE.MeshLambertMaterial({ color: lin(0xe6dac2) });
+  const creamM = new THREE.MeshLambertMaterial({ color: lin(0xc9d3df) });
   const frontMat = new THREE.MeshLambertMaterial({ map: frontTex.ok });
   // body: a slab with real thickness whose front swells gently where the letter sits inside
   const bodyGeo = new THREE.BoxGeometry(EW, EH, ED, 40, 24, 1);
   const bulge = (bx, by) => 0.14 * Math.max(0, 1 - Math.pow(2 * bx / EW, 2)) * Math.max(0, 1 - Math.pow(2 * by / EH, 2)) * Math.min(1, Math.max(0, (EH / 2 - FLAP + 0.1 - by) / 0.9));
   { const ps = bodyGeo.attributes.position; for (let i = 0; i < ps.count; i++) if (ps.getZ(i) > 0) ps.setZ(i, ps.getZ(i) + bulge(ps.getX(i), ps.getY(i))); bodyGeo.computeVertexNormals(); }
   add(envl, bodyGeo, [creamM, creamM, creamM, creamM, frontMat, creamM], 0, 0, 0);
-  const shadowTex = canvasTex(256, 160, (x, w, h) => { x.clearRect(0, 0, w, h); const g = x.createRadialGradient(w / 2, h / 2, 8, w / 2, h / 2, w / 2); g.addColorStop(0, 'rgba(60,14,20,0.42)'); g.addColorStop(0.6, 'rgba(60,14,20,0.16)'); g.addColorStop(1, 'rgba(60,14,20,0)'); x.fillStyle = g; x.fillRect(0, 0, w, h); });
+  const shadowTex = canvasTex(256, 160, (x, w, h) => { x.clearRect(0, 0, w, h); const g = x.createRadialGradient(w / 2, h / 2, 8, w / 2, h / 2, w / 2); g.addColorStop(0, 'rgba(18,35,55,0.42)'); g.addColorStop(0.6, 'rgba(18,35,55,0.16)'); g.addColorStop(1, 'rgba(18,35,55,0)'); x.fillStyle = g; x.fillRect(0, 0, w, h); });
   const envShadow = add(cG, new THREE.PlaneGeometry(EW * 1.3, EH * 1.35), new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false }), 0.3, -0.38, -0.7);
   // flap: paper outside, maroon security tint inside, hinged on the top edge, with a little thickness
   const flapShape = new THREE.Shape(); flapShape.moveTo(-EW / 2, 0); flapShape.lineTo(EW / 2, 0); flapShape.lineTo(0.14, -FLAP + 0.05); flapShape.quadraticCurveTo(0, -FLAP - 0.04, -0.14, -FLAP + 0.05); flapShape.lineTo(-EW / 2, 0);
@@ -569,22 +569,22 @@ window.KCLanding = (() => {
   const fuv = flapGeo.attributes.uv, fpos = flapGeo.attributes.position;
   for (let i = 0; i < fuv.count; i++) fuv.setXY(i, fpos.getX(i) / EW + 0.5, fpos.getY(i) / FLAP + 1);
   const flapOut = new THREE.MeshLambertMaterial({ map: canvasTex(512, 160, (x, w, h) => {
-    paperFill(x, w, h, '#ece0c7');
-    x.strokeStyle = 'rgba(74,16,25,0.3)'; x.lineWidth = 3; x.beginPath(); x.moveTo(0, 1); x.lineTo(w / 2, h - 1); x.lineTo(w, 1); x.stroke();
+    paperFill(x, w, h, '#d1d8e2');
+    x.strokeStyle = 'rgba(23,42,68,0.3)'; x.lineWidth = 3; x.beginPath(); x.moveTo(0, 1); x.lineTo(w / 2, h - 1); x.lineTo(w, 1); x.stroke();
   }) });
   const flapIn = new THREE.MeshLambertMaterial({ map: canvasTex(512, 160, (x, w, h) => {
-    x.fillStyle = '#e9dcc2'; x.fillRect(0, 0, w, h); x.strokeStyle = 'rgba(122,29,42,0.35)'; x.lineWidth = 1.4;
+    x.fillStyle = '#cbd4e0'; x.fillRect(0, 0, w, h); x.strokeStyle = 'rgba(35,65,104,0.35)'; x.lineWidth = 1.4;
     for (let i = -h; i < w; i += 7) { x.beginPath(); x.moveTo(i, 0); x.lineTo(i + h, h); x.stroke(); }
   }), side: THREE.BackSide });
   const envFlap = new THREE.Group(); envFlap.position.set(0, EH / 2, ED / 2 + 0.006); envl.add(envFlap);
   envFlap.add(new THREE.Mesh(flapGeo, flapOut)); const fIn = new THREE.Mesh(flapGeo, flapIn); fIn.position.z = -0.004; envFlap.add(fIn);
-  const flapShadow = add(envl, new THREE.ShapeGeometry(flapShape, 8), new THREE.MeshBasicMaterial({ color: 0x3c0e14, transparent: true, opacity: 0.08, depthWrite: false }), 0, EH / 2 - 0.035, ED / 2 + 0.003);
+  const flapShadow = add(envl, new THREE.ShapeGeometry(flapShape, 8), new THREE.MeshBasicMaterial({ color: 0x122337, transparent: true, opacity: 0.08, depthWrite: false }), 0, EH / 2 - 0.035, ED / 2 + 0.003);
 
   // wax seal: two pieces cut along a jagged crack, extruded with rounded edges, each carrying its part of the print
   const SEAL_Y = EH / 2 - FLAP + 0.14, SEAL_R = 0.44, WAX_D = 0.05, WAX_B = 0.035;
   const SEAL_TOP = WAX_D + WAX_B;
-  const waxSide = new THREE.MeshLambertMaterial({ color: lin(0x6e1824) });
-  const waxTop = new THREE.MeshLambertMaterial({ color: lin(0x8c2230) });
+  const waxSide = new THREE.MeshLambertMaterial({ color: lin(0x1f3a5c) });
+  const waxTop = new THREE.MeshLambertMaterial({ color: lin(0x2b4b75) });
   const SEAL_Z = ED / 2 + 0.012 + WAX_B;
   const wseal = new THREE.Group(); wseal.position.set(0, SEAL_Y, SEAL_Z); envl.add(wseal);
   const rimNoise = (a) => 1 + 0.05 * Math.sin(a * 7) + 0.035 * Math.sin(a * 13 + 1);
@@ -597,10 +597,10 @@ window.KCLanding = (() => {
   let crackStep = -1, printStamped = false;
   const printTex = canvasTex(512, 512, (x, w, h) => {
     x.clearRect(0, 0, w, h); const c = w / 2, R = w / 2 * 0.98;
-    const g = x.createRadialGradient(c - 40, c - 50, 20, c, c, R); g.addColorStop(0, 'rgba(255,170,170,0.22)'); g.addColorStop(1, 'rgba(30,0,6,0.22)'); x.fillStyle = g; x.fillRect(0, 0, w, h);
+    const g = x.createRadialGradient(c - 40, c - 50, 20, c, c, R); g.addColorStop(0, 'rgba(202,211,223,0.22)'); g.addColorStop(1, 'rgba(8,14,22,0.22)'); x.fillStyle = g; x.fillRect(0, 0, w, h);
     if (printStamped) {
       // the key's bow, pressed in: outer ring, inner ring, four spokes and a centre boss, all on one centre
-      const emboss = (fn) => { x.save(); x.translate(3, 3); x.strokeStyle = x.fillStyle = 'rgba(255,190,190,0.35)'; fn(); x.restore(); x.strokeStyle = x.fillStyle = 'rgba(32,2,8,0.78)'; fn(); };
+      const emboss = (fn) => { x.save(); x.translate(3, 3); x.strokeStyle = x.fillStyle = 'rgba(215,222,230,0.35)'; fn(); x.restore(); x.strokeStyle = x.fillStyle = 'rgba(8,16,26,0.78)'; fn(); };
       emboss(() => { x.lineWidth = 26; x.beginPath(); x.arc(c, c, R * 0.64, 0, Math.PI * 2); x.stroke(); });
       emboss(() => { x.lineWidth = 10; x.beginPath(); x.arc(c, c, R * 0.32, 0, Math.PI * 2); x.stroke(); });
       emboss(() => { x.lineWidth = 9; for (let k = 0; k < 4; k++) { const a = Math.PI / 4 + k * Math.PI / 2; x.beginPath(); x.moveTo(c + Math.cos(a) * R * 0.36, c + Math.sin(a) * R * 0.36); x.lineTo(c + Math.cos(a) * R * 0.56, c + Math.sin(a) * R * 0.56); x.stroke(); } });
@@ -612,7 +612,7 @@ window.KCLanding = (() => {
     if (len > 0) {
       const P = CRACK.map(([px2, py2]) => [c + px2 / SEAL_R * (w / 2), c - py2 / SEAL_R * (w / 2)]);
       const n = (P.length - 1) * len;
-      x.strokeStyle = 'rgba(16,0,4,0.9)'; x.lineWidth = 5; x.lineJoin = 'round'; x.beginPath(); x.moveTo(...P[0]);
+      x.strokeStyle = 'rgba(4,7,12,0.9)'; x.lineWidth = 5; x.lineJoin = 'round'; x.beginPath(); x.moveTo(...P[0]);
       for (let i = 1; i <= Math.floor(n); i++) x.lineTo(...P[i]);
       const f = n % 1, j = Math.floor(n);
       if (f && j + 1 < P.length) x.lineTo(P[j][0] + (P[j + 1][0] - P[j][0]) * f, P[j][1] + (P[j + 1][1] - P[j][1]) * f);
@@ -644,14 +644,14 @@ window.KCLanding = (() => {
   // sealing wax stick and the drop it lets fall
   const stick = new THREE.Group(); envl.add(stick);
   add(stick, new THREE.CylinderGeometry(0.09, 0.09, 1.5, 24), waxSide, 0, 0.75, 0);
-  const tipMat = new THREE.MeshLambertMaterial({ color: lin(0x8c2230), emissive: 0x000000 });
+  const tipMat = new THREE.MeshLambertMaterial({ color: lin(0x2b4b75), emissive: 0x000000 });
   add(stick, new THREE.SphereGeometry(0.1, 20, 14), tipMat, 0, 0, 0);
   const waxDrop = add(envl, new THREE.SphereGeometry(0.17, 24, 18), waxTop, 0, SEAL_Y, 0.9);
   // magnifier that finds the changed character
   const mag = new THREE.Group(); envl.add(mag);
   add(mag, new THREE.TorusGeometry(0.34, 0.035, 12, 64), brassM, 0, 0, 0);
   add(mag, new THREE.CircleGeometry(0.33, 48), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.12, depthWrite: false }), 0, 0, 0);
-  add(mag, new THREE.CylinderGeometry(0.035, 0.04, 0.7, 16), lin ? new THREE.MeshLambertMaterial({ color: lin(0x5c1220) }) : brassM, 0.42, -0.42, 0, 0, 0, Math.PI / 4);
+  add(mag, new THREE.CylinderGeometry(0.035, 0.04, 0.7, 16), lin ? new THREE.MeshLambertMaterial({ color: lin(0x1c3352) }) : brassM, 0.42, -0.42, 0, 0, 0, Math.PI / 4);
   const altRing = add(envl, new THREE.RingGeometry(0.16, 0.2, 48), new THREE.MeshBasicMaterial({ color: 0xd2501f, transparent: true, opacity: 0, depthWrite: false }), 0, 0, ED / 2 + 0.1);
   const winToLocal = (px, py, out) => out.set((px / FRONT_W - 0.5) * EW, (0.5 - py / FRONT_H) * EH, ED / 2 + 0.01);
 
@@ -732,27 +732,27 @@ window.KCLanding = (() => {
   const auHalfGeo = new THREE.TorusGeometry(0.3, 0.075, 16, 24, Math.PI);
   const auLinkX = (i) => (i - (AU_LINKS - 1) / 2) * AU_PITCH;
   const auLinkY = (i) => { const x = auLinkX(i) / (AU_PITCH * AU_LINKS / 2); return 0.22 * (x * x - 1); };   // a gentle sag
-  const AU_PAT = lin(0x5aa08f), AU_OXL = lin(0xc2451e), AU_BRL = new THREE.Color(0xc9a35b);
+  const AU_PAT = lin(0x5aa08f), AU_OXL = lin(0xc2451e), AU_BRL = new THREE.Color(0x6d8db7);
   const auTagTex = (e, variant) => canvasTex(256, 300, (x, w, h) => {
-    paperFill(x, w, h, '#f3e8d2');
-    x.strokeStyle = 'rgba(74,16,25,0.35)'; x.lineWidth = 4; x.strokeRect(6, 6, w - 12, h - 12);
-    x.fillStyle = '#c9a35b'; x.beginPath(); x.arc(w / 2, 34, 12, 0, Math.PI * 2); x.fill();
-    x.fillStyle = '#f3e8d2'; x.beginPath(); x.arc(w / 2, 34, 6, 0, Math.PI * 2); x.fill();
+    paperFill(x, w, h, '#dce2e9');
+    x.strokeStyle = 'rgba(23,42,68,0.35)'; x.lineWidth = 4; x.strokeRect(6, 6, w - 12, h - 12);
+    x.fillStyle = '#6d8db7'; x.beginPath(); x.arc(w / 2, 34, 12, 0, Math.PI * 2); x.fill();
+    x.fillStyle = '#dce2e9'; x.beginPath(); x.arc(w / 2, 34, 6, 0, Math.PI * 2); x.fill();
     x.textAlign = 'center'; x.textBaseline = 'middle';
-    x.fillStyle = '#7a1d2a'; x.font = "500 54px 'JetBrains Mono', ui-monospace, monospace"; x.fillText(e[0], w / 2, 96);
-    x.fillStyle = '#4a1019'; x.font = "600 26px 'Hanken Grotesk', system-ui, sans-serif"; x.fillText(e[1], w / 2, 150);
+    x.fillStyle = '#234168'; x.font = "500 54px 'JetBrains Mono', ui-monospace, monospace"; x.fillText(e[0], w / 2, 96);
+    x.fillStyle = '#172a44'; x.font = "600 26px 'Hanken Grotesk', system-ui, sans-serif"; x.fillText(e[1], w / 2, 150);
     if (variant === 'edited') {
-      x.font = "500 24px 'Hanken Grotesk', system-ui, sans-serif"; x.fillStyle = '#7a3a42'; x.fillText('denied', w / 2 - 46, 186);
+      x.font = "500 24px 'Hanken Grotesk', system-ui, sans-serif"; x.fillStyle = '#2d4e79'; x.fillText('denied', w / 2 - 46, 186);
       x.strokeStyle = '#c2451e'; x.lineWidth = 4; x.beginPath(); x.moveTo(w / 2 - 88, 188); x.lineTo(w / 2 - 4, 184); x.stroke();
       x.fillStyle = '#c2451e'; x.font = "700 26px 'Hanken Grotesk', system-ui, sans-serif"; x.fillText('success', w / 2 + 52, 186);
-    } else { x.font = "500 24px 'Hanken Grotesk', system-ui, sans-serif"; x.fillStyle = '#7a3a42'; x.fillText(e[2], w / 2, 186); }
-    x.fillStyle = 'rgba(74,16,25,0.6)'; x.font = "500 22px 'JetBrains Mono', ui-monospace, monospace"; x.fillText('hash ' + e[3] + '…', w / 2, 246);
+    } else { x.font = "500 24px 'Hanken Grotesk', system-ui, sans-serif"; x.fillStyle = '#2d4e79'; x.fillText(e[2], w / 2, 186); }
+    x.fillStyle = 'rgba(23,42,68,0.6)'; x.font = "500 22px 'JetBrains Mono', ui-monospace, monospace"; x.fillText('hash ' + e[3] + '…', w / 2, 246);
   });
   const auTagGeo = new THREE.BoxGeometry(0.54, 0.64, 0.025);
-  const auTagEdge = new THREE.MeshLambertMaterial({ color: lin(0xd9cbb0) });
+  const auTagEdge = new THREE.MeshLambertMaterial({ color: lin(0xb1c2d8) });
   const auLinks = [], auTags = [];
   for (let i = 0; i < AU_LINKS; i++) {
-    const mat = new THREE.MeshStandardMaterial({ color: 0xc9a35b, metalness: 1, roughness: 0.3, envMapIntensity: 1.2, transparent: i < AU_LEAD, opacity: 1, emissive: 0x000000 });
+    const mat = new THREE.MeshStandardMaterial({ color: 0x6d8db7, metalness: 1, roughness: 0.3, envMapIntensity: 1.2, transparent: i < AU_LEAD, opacity: 1, emissive: 0x000000 });
     const g = new THREE.Group(); chainG.add(g);
     if (i === AU_BAD) {
       const L = new THREE.Mesh(auHalfGeo, mat), R = new THREE.Mesh(auHalfGeo, mat);
@@ -858,26 +858,26 @@ window.KCLanding = (() => {
   // server: the badge only says who you are, the reader decides what you may do.
   const roG = new THREE.Group(); scene.add(roG);
   const ROLE_DEF = [
-    { name: 'Administrator', band: '#7a1d2a', line: 'Keys, users, settings, backups', id: 'KC-0001' },
-    { name: 'Operator', band: '#b8903f', line: 'Encrypt and decrypt', id: 'KC-0007' },
+    { name: 'Administrator', band: '#234168', line: 'Keys, users, settings, backups', id: 'KC-0001' },
+    { name: 'Operator', band: '#4374b4', line: 'Encrypt and decrypt', id: 'KC-0007' },
     { name: 'Viewer', band: '#2d6a5c', line: 'Read only', id: 'KC-0013' },
   ];
   const badgeTex = (d) => canvasTex(512, 740, (x, w, h) => {
-    paperFill(x, w, h, '#f4ead7');
+    paperFill(x, w, h, '#e0e5eb');
     x.fillStyle = d.band; x.fillRect(0, 0, w, 150);
-    x.fillStyle = '#f4ead7'; x.beginPath(); x.roundRect ? x.roundRect(w / 2 - 70, 40, 140, 26, 13) : x.rect(w / 2 - 70, 40, 140, 26); x.fill();
-    x.fillStyle = 'rgba(244,234,215,0.85)'; x.font = "500 30px 'Hanken Grotesk', system-ui, sans-serif"; x.textAlign = 'center'; x.fillText('KeyCycle access', w / 2, 118);
+    x.fillStyle = '#e0e5eb'; x.beginPath(); x.roundRect ? x.roundRect(w / 2 - 70, 40, 140, 26, 13) : x.rect(w / 2 - 70, 40, 140, 26); x.fill();
+    x.fillStyle = 'rgba(224,229,235,0.85)'; x.font = "500 30px 'Hanken Grotesk', system-ui, sans-serif"; x.textAlign = 'center'; x.fillText('KeyCycle access', w / 2, 118);
     // emblem: a small key in a ring
     x.strokeStyle = d.band; x.lineWidth = 6; x.beginPath(); x.arc(w / 2, 280, 70, 0, Math.PI * 2); x.stroke();
     x.lineWidth = 8; x.beginPath(); x.arc(w / 2 - 22, 280, 18, 0, Math.PI * 2); x.stroke(); x.beginPath(); x.moveTo(w / 2 - 4, 280); x.lineTo(w / 2 + 42, 280); x.lineTo(w / 2 + 42, 298); x.moveTo(w / 2 + 26, 280); x.lineTo(w / 2 + 26, 294); x.stroke();
-    x.fillStyle = '#5a1520'; x.font = "92px 'Pinyon Script', 'Snell Roundhand', cursive"; x.fillText(d.name, w / 2, 450);
-    x.fillStyle = '#7a3a42'; x.font = "500 30px 'Hanken Grotesk', system-ui, sans-serif"; x.fillText(d.line, w / 2, 510);
-    x.fillStyle = '#2a1a16'; x.fillRect(0, 600, w, 54);
-    x.fillStyle = 'rgba(74,16,25,0.7)'; x.font = "500 26px 'JetBrains Mono', ui-monospace, monospace"; x.fillText(d.id, w / 2, 700);
+    x.fillStyle = '#1c3453'; x.font = "700 72px 'Hanken Grotesk', system-ui, sans-serif"; x.fillText(d.name, w / 2, 450);
+    x.fillStyle = '#2d4e79'; x.font = "500 30px 'Hanken Grotesk', system-ui, sans-serif"; x.fillText(d.line, w / 2, 510);
+    x.fillStyle = '#101e30'; x.fillRect(0, 600, w, 54);
+    x.fillStyle = 'rgba(23,42,68,0.7)'; x.font = "500 26px 'JetBrains Mono', ui-monospace, monospace"; x.fillText(d.id, w / 2, 700);
   });
   const BW = 0.9, BH = 1.3;
   const badgeBody = new THREE.ExtrudeGeometry(roundRect(BW, BH, 0.07), { depth: 0.03, bevelEnabled: true, bevelThickness: 0.012, bevelSize: 0.012, bevelSegments: 2 });
-  const badgeEdge = new THREE.MeshLambertMaterial({ color: lin(0xe3d6bc) });
+  const badgeEdge = new THREE.MeshLambertMaterial({ color: lin(0xc3cedc) });
   const lanyardMats = ROLE_DEF.map(d => new THREE.MeshLambertMaterial({ color: lin(parseInt(d.band.slice(1), 16)), side: THREE.DoubleSide }));
   const badges = ROLE_DEF.map((d, i) => {
     const g = new THREE.Group(); roG.add(g);
@@ -893,15 +893,15 @@ window.KCLanding = (() => {
   const railL = new THREE.Vector3(), railR = new THREE.Vector3();
   // the reader: a dark plate with a brass bezel, a tap target and a light ring
   const reader = new THREE.Group(); roG.add(reader);
-  add(reader, new THREE.ExtrudeGeometry(roundRect(1.0, 1.4, 0.14), { depth: 0.22, bevelEnabled: true, bevelThickness: 0.04, bevelSize: 0.04, bevelSegments: 3 }), new THREE.MeshLambertMaterial({ color: lin(0x2a1a16) }), 0, 0, -0.22);
+  add(reader, new THREE.ExtrudeGeometry(roundRect(1.0, 1.4, 0.14), { depth: 0.22, bevelEnabled: true, bevelThickness: 0.04, bevelSize: 0.04, bevelSegments: 3 }), new THREE.MeshLambertMaterial({ color: lin(0x101e30) }), 0, 0, -0.22);
   add(reader, new THREE.TorusGeometry(0.34, 0.04, 12, 64), brassM, 0, 0.12, 0.06);
   const ledMat = new THREE.MeshBasicMaterial({ color: 0x555555 });
   add(reader, new THREE.TorusGeometry(0.26, 0.025, 10, 64), ledMat, 0, 0.12, 0.07);
-  const glassM = new THREE.MeshLambertMaterial({ color: lin(0x3a2622) });
+  const glassM = new THREE.MeshLambertMaterial({ color: lin(0x172b45) });
   add(reader, new THREE.CircleGeometry(0.24, 48), glassM, 0, 0.12, 0.05);
   add(reader, new THREE.BoxGeometry(0.6, 0.06, 0.02), brassM, 0, -0.42, 0.04);
   const readerGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: haloTex, transparent: true, opacity: 0, depthWrite: false })); readerGlow.scale.set(1.6, 1.6, 1); reader.add(readerGlow); readerGlow.position.set(0, 0.12, 0.2);
-  const GREEN = lin(0x3f9a84), REDR = lin(0xc2451e), IDLE = lin(0x6b5a52);
+  const GREEN = lin(0x3f9a84), REDR = lin(0xc2451e), IDLE = lin(0x33598a);
   const RESULT = [false, true, false];            // administrator refused (standard key), operator allowed, viewer refused
   const bv = new THREE.Vector3(), bv2 = new THREE.Vector3();
   const updateRoles = (now, u) => {
@@ -953,7 +953,7 @@ window.KCLanding = (() => {
   const box = new THREE.Group(); box.position.set(-1.7, 0, 0); rcG.add(box);
   {
     const BWd = 1.5, BHt = 0.75, BDp = 1.0, T = 0.06;
-    const velvet = new THREE.MeshLambertMaterial({ color: lin(0x3d0b14) });
+    const velvet = new THREE.MeshLambertMaterial({ color: lin(0x122236) });
     add(box, new THREE.BoxGeometry(BWd, T, BDp), boxM, 0, T / 2, 0);
     add(box, new THREE.BoxGeometry(BWd, BHt, T), boxM, 0, BHt / 2, BDp / 2 - T / 2);
     add(box, new THREE.BoxGeometry(BWd, BHt, T), boxM, 0, BHt / 2, -BDp / 2 + T / 2);
@@ -975,24 +975,24 @@ window.KCLanding = (() => {
   [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([sx, sz]) => [0.02, 0.73].forEach(y => add(box, new THREE.BoxGeometry(0.14, 0.14, 0.14), brassM, sx * 0.72, y, sz * 0.47)));
   const lid = new THREE.Group(); lid.position.set(0, 0.75, -0.5); box.add(lid);
   const lidM = new THREE.MeshStandardMaterial({ color: 0x5f686e, metalness: 0.8, roughness: 0.7, envMapIntensity: 0.25 });
-  add(lid, new THREE.BoxGeometry(1.54, 0.14, 1.04), [lidM, lidM, lidM, new THREE.MeshLambertMaterial({ color: lin(0x3d0b14) }), lidM, lidM], 0, 0.07, 0.5);
+  add(lid, new THREE.BoxGeometry(1.54, 0.14, 1.04), [lidM, lidM, lidM, new THREE.MeshLambertMaterial({ color: lin(0x122236) }), lidM, lidM], 0, 0.07, 0.5);
   add(lid, new THREE.TorusGeometry(0.16, 0.03, 8, 24, Math.PI), brassM, 0, 0.15, 0.5);
   // tamper tag on the front: a wax disc on a string; it turns green when the HMAC checks out
-  const tagWax = new THREE.MeshLambertMaterial({ color: lin(0x8c2230), emissive: 0x000000 });
+  const tagWax = new THREE.MeshLambertMaterial({ color: lin(0x2b4b75), emissive: 0x000000 });
   add(box, new THREE.CylinderGeometry(0.16, 0.17, 0.05, 32), tagWax, 0, 0.42, 0.53, Math.PI / 2);
-  add(box, new THREE.BoxGeometry(0.02, 0.36, 0.01), new THREE.MeshLambertMaterial({ color: lin(0x5a1520) }), 0, 0.62, 0.51);
-  const tagCheck = canvasTex(128, 128, (x) => { x.clearRect(0, 0, 128, 128); x.strokeStyle = '#f4ead7'; x.lineWidth = 12; x.lineCap = 'round'; x.beginPath(); x.moveTo(38, 66); x.lineTo(56, 84); x.lineTo(92, 44); x.stroke(); });
+  add(box, new THREE.BoxGeometry(0.02, 0.36, 0.01), new THREE.MeshLambertMaterial({ color: lin(0x1c3453) }), 0, 0.62, 0.51);
+  const tagCheck = canvasTex(128, 128, (x) => { x.clearRect(0, 0, 128, 128); x.strokeStyle = '#e0e5eb'; x.lineWidth = 12; x.lineCap = 'round'; x.beginPath(); x.moveTo(38, 66); x.lineTo(56, 84); x.lineTo(92, 44); x.stroke(); });
   const checkMat = new THREE.MeshBasicMaterial({ map: tagCheck, transparent: true, opacity: 0, depthWrite: false });
   add(box, new THREE.PlaneGeometry(0.26, 0.26), checkMat, 0, 0.42, 0.56);
   // contents: a short audit chain and a key
   const content = new THREE.Group(); rcG.add(content);
-  const miniLinkMats = [0, 1, 2].map(() => new THREE.MeshStandardMaterial({ color: 0xc9a35b, metalness: 1, roughness: 0.3, envMapIntensity: 1.2 }));
+  const miniLinkMats = [0, 1, 2].map(() => new THREE.MeshStandardMaterial({ color: 0x6d8db7, metalness: 1, roughness: 0.3, envMapIntensity: 1.2 }));
   const miniChain = new THREE.Group(); content.add(miniChain);
   miniLinkMats.forEach((m, i) => { const l = new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.035, 10, 32), m); l.scale.set(1.5, 1, 1); l.position.x = (i - 1) * 0.3; l.rotation.x = i % 2 ? Math.PI / 2 : 0; miniChain.add(l); });
   const proofKey = key.clone(); proofKey.traverse(o => { if (o.isMesh) o.material = miniMat; }); proofKey.rotation.order = 'YXZ'; rcG.add(proofKey);
   // pedestal and bell jar
   const ped = new THREE.Group(); ped.position.set(1.6, 0, 0); rcG.add(ped);
-  add(ped, new THREE.CylinderGeometry(0.75, 0.85, 0.16, 48), new THREE.MeshLambertMaterial({ color: lin(0x5c1220) }), 0, 0.08, 0);
+  add(ped, new THREE.CylinderGeometry(0.75, 0.85, 0.16, 48), new THREE.MeshLambertMaterial({ color: lin(0x1c3352) }), 0, 0.08, 0);
   add(ped, new THREE.TorusGeometry(0.76, 0.03, 8, 64), brassM, 0, 0.16, 0, Math.PI / 2);
   const jar = new THREE.Group(); ped.add(jar);
   const glass = new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 0.1, roughness: 0.05, transparent: true, opacity: 0.26, envMapIntensity: 2, depthWrite: false, side: THREE.DoubleSide });
@@ -1003,19 +1003,19 @@ window.KCLanding = (() => {
   const jarGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: haloTex, transparent: true, opacity: 0, depthWrite: false })); jarGlow.scale.set(2.4, 2.4, 1); jarGlow.position.set(0, 0.7, 0); ped.add(jarGlow);
   // padlock that the restored key opens, and the proof it reveals
   const lock = new THREE.Group(); lock.position.set(0.18, 0.5, 0.05); ped.add(lock);
-  add(lock, new THREE.BoxGeometry(0.36, 0.3, 0.16), new THREE.MeshLambertMaterial({ color: lin(0x7a1d2a) }), 0, 0, 0);
+  add(lock, new THREE.BoxGeometry(0.36, 0.3, 0.16), new THREE.MeshLambertMaterial({ color: lin(0x234168) }), 0, 0, 0);
   const LOCK_FRONT = 0.08, KH_Y = -0.02;
   const kh = new THREE.Shape(); kh.absarc(0, 0.012, 0.026, 0, Math.PI * 2, false);
   const khSlot = new THREE.Shape(); khSlot.moveTo(-0.013, 0.005); khSlot.lineTo(0.013, 0.005); khSlot.lineTo(0.013, -0.075); khSlot.lineTo(-0.013, -0.075); khSlot.lineTo(-0.013, 0.005);
-  const khMat = new THREE.MeshBasicMaterial({ color: 0x080304 });
+  const khMat = new THREE.MeshBasicMaterial({ color: 0x030508 });
   add(lock, new THREE.ShapeGeometry(kh, 24), khMat, 0, KH_Y, LOCK_FRONT + 0.002);
   add(lock, new THREE.ShapeGeometry(khSlot), khMat, 0, KH_Y, LOCK_FRONT + 0.002);
   add(lock, new THREE.TorusGeometry(0.052, 0.01, 8, 32), brassM, 0, KH_Y + 0.012, LOCK_FRONT + 0.004);
   const shackle = new THREE.Group(); lock.add(shackle);
   add(shackle, new THREE.TorusGeometry(0.11, 0.025, 8, 32, Math.PI), brassM, 0, 0.14, 0);
-  const proofTag = add(ped, new THREE.PlaneGeometry(0.5, 0.2), new THREE.MeshBasicMaterial({ map: canvasTex(256, 100, (x, w, h) => { paperFill(x, w, h, '#f4ead7'); x.strokeStyle = '#2d6a5c'; x.lineWidth = 4; x.strokeRect(3, 3, w - 6, h - 6); x.fillStyle = '#2d6a5c'; x.font = "500 40px 'JetBrains Mono', monospace"; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('payroll', w / 2, h / 2 + 2); }), transparent: true, opacity: 0 }), 0.18, 0.95, 0.12);
+  const proofTag = add(ped, new THREE.PlaneGeometry(0.5, 0.2), new THREE.MeshBasicMaterial({ map: canvasTex(256, 100, (x, w, h) => { paperFill(x, w, h, '#e0e5eb'); x.strokeStyle = '#2d6a5c'; x.lineWidth = 4; x.strokeRect(3, 3, w - 6, h - 6); x.fillStyle = '#2d6a5c'; x.font = "500 40px 'JetBrains Mono', monospace"; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('payroll', w / 2, h / 2 + 2); }), transparent: true, opacity: 0 }), 0.18, 0.95, 0.12);
   const scanLamp = new THREE.Sprite(new THREE.SpriteMaterial({ map: haloTex, transparent: true, opacity: 0, depthWrite: false })); scanLamp.scale.set(0.9, 0.9, 1); rcG.add(scanLamp);
-  const cvA = new THREE.Vector3(), cvB = new THREE.Vector3(), BRL_R = new THREE.Color(0xc9a35b), WAXC = lin(0x8c2230);
+  const cvA = new THREE.Vector3(), cvB = new THREE.Vector3(), BRL_R = new THREE.Color(0x6d8db7), WAXC = lin(0x2b4b75);
   const updateRecovery = (now, u) => {
     domWorld(anchorEls.recov, 0, rcG.position);
     rcG.scale.setScalar(Math.max(0.0001, u * 1.05 * QS.s));
@@ -1231,7 +1231,7 @@ window.KCLanding = (() => {
     const steps = 260, lines = 12;
     RINGS.forEach(([base, petals, dirn], ri) => {
       const amp = R * 0.055, b = R * base;
-      g.strokeStyle = ri === 1 ? 'rgba(122,29,42,0.10)' : 'rgba(122,29,42,0.07)';
+      g.strokeStyle = ri === 1 ? 'rgba(35,65,104,0.10)' : 'rgba(35,65,104,0.07)';
       for (let k = 0; k < lines; k++) {
         g.beginPath();
         const ph = k * 0.42 + t * 0.22 * dirn;

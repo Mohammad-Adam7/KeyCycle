@@ -12,3 +12,4 @@ venv/
 *.db-shm
 .coverage
 demo-output/
+app/static/UI.zip
