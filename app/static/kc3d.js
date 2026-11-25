@@ -15,7 +15,7 @@ window.KC3D = (() => {
     const pm = new T.PMREMGenerator(renderer), env = new T.Scene();
     const sg = new T.SphereGeometry(20, 24, 12), cols = [], pa = sg.attributes.position;
     for (let i = 0; i < pa.count; i++) {
-      const t = (pa.getY(i) / 20 + 1) / 2, c = new T.Color(0x0b0e11).lerp(new T.Color(0x5a5348), t);
+      const t = (pa.getY(i) / 20 + 1) / 2, c = new T.Color(0x0b0e11).lerp(new T.Color(0x2c4c76), t);
       cols.push(c.r, c.g, c.b);
     }
     sg.setAttribute('color', new T.Float32BufferAttribute(cols, 3));
@@ -31,12 +31,12 @@ window.KC3D = (() => {
   };
   const addLights = (scene) => {
     scene.add(new T.AmbientLight(0xffffff, 0.2));
-    const sun = new T.DirectionalLight(0xfff1dc, 1.3); sun.position.set(-4, 6, 8); scene.add(sun);
+    const sun = new T.DirectionalLight(0xeaedf1, 1.3); sun.position.set(-4, 6, 8); scene.add(sun);
   };
   const add = (parent, geo, mat, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0) => {
     const m = new T.Mesh(geo, mat); m.position.set(x, y, z); m.rotation.set(rx, ry, rz); parent.add(m); return m;
   };
-  const brass = () => new T.MeshStandardMaterial({ color: 0xc9a35b, metalness: 1, roughness: 0.27, envMapIntensity: 1.25, emissive: 0x000000 });
+  const brass = () => new T.MeshStandardMaterial({ color: 0x6d8db7, metalness: 1, roughness: 0.27, envMapIntensity: 1.25, emissive: 0x000000 });
   const steel = () => new T.MeshStandardMaterial({ color: 0x7a848b, metalness: 1, roughness: 0.32 });
 
   // The KeyCycle key: bow with an inner ring and four spokes, collar, shaft, four teeth.
@@ -65,7 +65,7 @@ window.KC3D = (() => {
     const ch = new T.Path(); ch.absarc(0, 0, 2.2, 0, Math.PI * 2, true); cs.holes.push(ch);
     add(g, new T.ExtrudeGeometry(cs, { depth: 0.9, bevelEnabled: true, bevelThickness: 0.08, bevelSize: 0.08, bevelSegments: 3, curveSegments: 72 }), st, 0, 0, -0.9);
     for (let i = 0; i < 14; i++) { const a = i / 14 * Math.PI * 2; add(g, new T.SphereGeometry(0.06, 10, 8), st, Math.cos(a) * 2.62, Math.sin(a) * 2.62, 0.07); }
-    const glow = new T.MeshBasicMaterial({ color: 0xffc36b, transparent: true, opacity: 0 });
+    const glow = new T.MeshBasicMaterial({ color: 0x9cb2ce, transparent: true, opacity: 0 });
     add(g, new T.CircleGeometry(2.2, 64), glow, 0, 0, -0.85);
     const pivot = new T.Group(); pivot.position.set(2.5, 0, 0.36); g.add(pivot);
     const door = new T.Group(); door.position.set(-2.5, 0, 0); pivot.add(door);
@@ -78,7 +78,7 @@ window.KC3D = (() => {
     for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2; add(wheel, new T.SphereGeometry(0.12, 14, 10), br, Math.cos(a) * 0.8, Math.sin(a) * 0.8, 0); }
     add(wheel, new T.CylinderGeometry(0.22, 0.26, 0.24, 28), st, 0, 0, -0.06, Math.PI / 2);
     add(door, new T.TorusGeometry(0.34, 0.06, 10, 40), br, 0, -1.25, 0.38);
-    add(door, new T.CircleGeometry(0.3, 32), new T.MeshBasicMaterial({ color: 0x0b0607 }), 0, -1.25, 0.37);
+    add(door, new T.CircleGeometry(0.3, 32), new T.MeshBasicMaterial({ color: 0x04080d }), 0, -1.25, 0.37);
     return { group: g, pivot, wheel, glow };
   };
 

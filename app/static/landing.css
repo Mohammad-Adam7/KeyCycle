@@ -1,13 +1,13 @@
 
 #landing {
-  --bg: #F5EDDD; --bg-2: #ECE1CB; --ink: #4A1019; --ink-2: #7A3A42;
-  --brass: #7A1D2A; --brass-2: #9C3543; --patina: #2D6A5C; --oxide: #C2451E;
-  --line: rgba(74,16,25,.16); --seam: #EADFC8; --card: rgba(255,251,243,.72);
+  --bg: #E5E8ED; --bg-2: #D3DAE4; --ink: #14243B; --ink-2: #3B4D66;
+  --brass: #1F3A5F; --brass-2: #2F5282; --patina: #2D6A5C; --oxide: #C2451E;
+  --line: rgba(23,42,68,.16); --seam: #D0D8E2; --card: rgba(248,249,250,.72);
   color-scheme: light;
   box-sizing: border-box;
   padding-top: env(safe-area-inset-top, 0px);
   padding-bottom: env(safe-area-inset-bottom, 0px);
-  --script: 'Pinyon Script', 'Snell Roundhand', 'Apple Chancery', cursive;
+  --script: 'Hanken Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --sans: 'Hanken Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
 }
@@ -34,7 +34,7 @@ html { scroll-padding-top: env(safe-area-inset-top, 0px); }
 }
 #landing .topbar > * { pointer-events: auto; }
 #landing .mark {
-  font-family: var(--script); font-size: 34px; line-height: 1; color: var(--brass);
+  font-family: var(--script); font-weight: 700; letter-spacing: -.02em; font-size: 22px; line-height: 1; color: var(--brass);
   text-decoration: none; padding: 4px 6px; border-radius: 6px;
 }
 #landing .btn {
@@ -68,7 +68,7 @@ html { scroll-padding-top: env(safe-area-inset-top, 0px); }
 #landing .inner { position: relative; z-index: 2; height: 100%; max-width: 1320px; margin: 0 auto; padding: 0 clamp(20px, 5vw, 64px); }
 #landing .anchor { position: absolute; width: 2px; height: 2px; }
 
-#landing .title { font-family: var(--script); font-weight: 400; color: var(--brass); font-size: clamp(54px, 6.4vw, 104px); line-height: 1.05; margin: 0 0 .15em; letter-spacing: 0; }
+#landing .title { font-family: var(--script); font-weight: 700; color: var(--brass); font-size: clamp(38px, 5vw, 80px); line-height: 1.08; margin: 0 0 .2em; letter-spacing: -.025em; }
 #landing .lede { font-size: clamp(21px, 1.5vw + 10px, 30px); line-height: 1.3; font-weight: 500; margin: 0 0 .7em; max-width: 22ch; color: var(--ink); }
 #landing .body { color: var(--ink-2); margin: 0 0 1em; max-width: 46ch; }
 #landing .facts { list-style: none; padding: 0; margin: 1.4em 0 0; display: grid; gap: .55em; max-width: 46ch; }
@@ -81,7 +81,7 @@ html { scroll-padding-top: env(safe-area-inset-top, 0px); }
 #landing .hero .inner { display: grid; place-items: center; }
 #landing .hero-stack { position: absolute; left: 0; right: 0; top: 43%; text-align: center; }
 #landing .wordmark { display: block; width: min(88vw, 820px); height: auto; margin: 0 auto; overflow: visible; }
-#landing .wordmark text { font-family: var(--script); font-size: 250px; fill: var(--brass); fill-opacity: 0; stroke: var(--brass); stroke-width: 1.2; stroke-dasharray: 6000; stroke-dashoffset: 6000; }
+#landing .wordmark text { font-family: var(--script); font-weight: 700; letter-spacing: -.02em; font-size: 175px; fill: var(--brass); fill-opacity: 0; stroke: var(--brass); stroke-width: 1.2; stroke-dasharray: 6000; stroke-dashoffset: 6000; }
 #landing .tagline { margin: .2em auto 0; max-width: 46ch; font-size: clamp(18px, 1vw + 12px, 23px); color: var(--ink-2); padding: 0 20px; }
 #landing .cue { position: absolute; left: 50%; bottom: calc(28px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); font-size: 14px; color: var(--ink-2); display: flex; flex-direction: column; align-items: center; gap: 8px; }
 #landing .cue span.bar { width: 1px; height: 44px; background: linear-gradient(var(--brass), transparent); transform-origin: top; animation: drip 2.2s ease-in-out infinite; }

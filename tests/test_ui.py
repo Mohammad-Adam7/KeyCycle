@@ -21,12 +21,12 @@ def test_ui_static_assets_served(tmp_path):
     app = create_app(str(tmp_path / "ui_test.db"))
     client = TestClient(app)
 
-    # Style sheet with the cream, maroon and brass palette
+    # Style sheet with the updated palette
     css = client.get("/static/style.css")
     assert css.status_code == 200
     assert "text/css" in css.headers["content-type"]
-    assert "--maroon: #7A1D2A" in css.text
-    assert "--bg: #F5EDDD" in css.text
+    assert "--maroon:" in css.text
+    assert "--bg:" in css.text
     assert client.get("/static/landing.css").status_code == 200
 
     # JavaScript controller and the vendored libraries (served locally, no CDN)

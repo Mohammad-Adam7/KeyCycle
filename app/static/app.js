@@ -102,7 +102,7 @@ class KeyCycleApp {
       const wrap = document.createElement('div');
       wrap.className = 'dlg on'; wrap.id = id; wrap.setAttribute('role', 'dialog'); wrap.setAttribute('aria-modal', 'true'); wrap.setAttribute('aria-labelledby', `${id}-t`);
       wrap.innerHTML = `<div class="veil" data-close></div><form class="panel" novalidate>
-        ${stamp ? '<svg class="seal-stamp" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="44" fill="#7a1d2a"/><circle cx="50" cy="50" r="34" fill="none" stroke="#4a1019" stroke-width="3"/><path d="M36 36l28 28M64 36 36 64" stroke="#4a1019" stroke-width="6" stroke-linecap="round"/></svg>' : ''}
+        ${stamp ? '<svg class="seal-stamp" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="44" fill="#234168"/><circle cx="50" cy="50" r="34" fill="none" stroke="#172a44" stroke-width="3"/><path d="M36 36l28 28M64 36 36 64" stroke="#172a44" stroke-width="6" stroke-linecap="round"/></svg>' : ''}
         <h4 id="${id}-t">${this.escape(title)}</h4>${lead ? `<p class="lead">${lead}</p>` : ''}${fieldHtml}
         <p class="err" role="alert"></p>
         <div class="row"><button class="btn quiet" type="button" data-close>Cancel</button><button class="btn ${danger ? 'danger' : 'primary'}" type="submit">${this.escape(confirm)}</button></div></form>`;
@@ -312,7 +312,7 @@ class KeyCycleApp {
       const d = Math.min(devicePixelRatio, 1.5); if (afx.width !== Math.round(w * d)) { afx.width = Math.round(w * d); afx.height = Math.round(h * d); }
       ag.setTransform(d, 0, 0, d, 0, 0); ag.clearRect(0, 0, w, h);
       const cx = w / 2, cy = h / 2, R = Math.min(w, h) * 0.62;
-      const glow = ag.createRadialGradient(cx, cy, 10, cx, cy, R * 1.1); glow.addColorStop(0, 'rgba(226,192,122,0.22)'); glow.addColorStop(1, 'rgba(226,192,122,0)');
+      const glow = ag.createRadialGradient(cx, cy, 10, cx, cy, R * 1.1); glow.addColorStop(0, 'rgba(146,170,202,0.22)'); glow.addColorStop(1, 'rgba(146,170,202,0)');
       ag.fillStyle = glow; ag.fillRect(0, 0, w, h); ag.lineWidth = 0.8;
       [[0.5, 24, 1, 0.1], [0.68, 36, -1, 0.08], [0.86, 48, 1, 0.07], [1.04, 60, -1, 0.05]].forEach(([b, petals, dir, a], ri) => {
         ag.strokeStyle = `rgba(122,29,42,${a})`;
@@ -536,7 +536,7 @@ class KeyCycleApp {
       g.setTransform(d, 0, 0, d, 0, 0); g.clearRect(0, 0, w, h);
       const cx = w * 0.82, cy = h * 0.22, R = Math.min(w, h) * 0.55; g.lineWidth = 0.6;
       [[0.6, 30, 1], [0.85, 42, -1]].forEach(([b, petals, dir], ri) => {
-        g.strokeStyle = 'rgba(122,29,42,0.05)';
+        g.strokeStyle = 'rgba(35,65,104,0.05)';
         for (let k = 0; k < 10; k++) {
           g.beginPath();
           for (let s = 0; s <= 240; s++) {
@@ -702,7 +702,7 @@ class KeyCycleApp {
       hg.setTransform(d, 0, 0, d, 0, 0); hg.clearRect(0, 0, w, h);
       const cx = w * 0.74, cy = h * 0.5, R = h * 0.95, tt = this.RM ? 0 : t; hg.lineWidth = 0.7;
       [[0.42, 28, 1], [0.62, 40, -1], [0.82, 52, 1]].forEach(([b, petals, dir], ri) => {
-        hg.strokeStyle = 'rgba(226,192,122,0.16)';
+        hg.strokeStyle = 'rgba(146,170,202,0.16)';
         for (let k = 0; k < 9; k++) {
           hg.beginPath();
           for (let s = 0; s <= 220; s++) {
@@ -722,7 +722,7 @@ class KeyCycleApp {
     const stage = new KC3D.Stage(this.$('#chain3d'), { fov: 26, z: 4.6 });
     stage.camera.position.y = 0.15;
     const c = KC3D.buildChain(7); c.group.rotation.set(0.25, -0.22, 0); stage.scene.add(c.group);
-    const GOLD = new THREE.Color(0xc9a35b), PAT = KC3D.lin(0x2d6a5c), BAD = KC3D.lin(0xc2451e);
+    const GOLD = new THREE.Color(0x6d8db7), PAT = KC3D.lin(0x2d6a5c), BAD = KC3D.lin(0xc2451e);
     const state = { v: 0, bad: -1 };
     stage.onFrame = (t) => {
       if (!this.RM) c.group.rotation.y = -0.22 + Math.sin(t / 2.6) * 0.08;
@@ -916,7 +916,7 @@ class KeyCycleApp {
         const ver = res.data && res.data.current_version;
         this.toast(k.name + ' rotated' + (ver ? ' to v' + ver : ''), 'ok', (res.result && res.result.reason && res.result.reason.code) || 'ROTATE_OK');
         this.keys = await this.allKeys(); if (this.current === 'keys') this.drawKeyRows();
-        const row = this.$(`tr.k[data-id="${id}"]`); if (row && !this.RM) gsap.fromTo(row, { backgroundColor: 'rgba(176,138,62,0.25)' }, { backgroundColor: 'rgba(176,138,62,0)', duration: 1.4 });
+        const row = this.$(`tr.k[data-id="${id}"]`); if (row && !this.RM) gsap.fromTo(row, { backgroundColor: 'rgba(64,112,174,0.25)' }, { backgroundColor: 'rgba(64,112,174,0)', duration: 1.4 });
         if (this.openKey && this.openKey.id === id) { await this.openDrawer(id, true); if (this.keyStage && !this.RM) gsap.fromTo(this.keyStage.state, { spin: 0 }, { spin: 1, duration: 1.2, ease: 'power3.inOut' }); }
       },
     });
@@ -990,8 +990,8 @@ class KeyCycleApp {
       this.keyStage = { stage, mat, state };
     }
     const m = this.keyStage.mat;
-    m.color.set(0xc9a35b);
-    if (k.state === 'expired') m.color.lerp(KC3D.lin(0x8f8a82), 0.85);
+    m.color.set(0x6d8db7);
+    if (k.state === 'expired') m.color.lerp(KC3D.lin(0x5281bf), 0.85);
     if (k.state === 'revoked') m.color.lerp(KC3D.lin(0x8a2a24), 0.7);
     m.roughness = k.state === 'expired' ? 0.6 : 0.27;
   }
@@ -1041,9 +1041,9 @@ class KeyCycleApp {
     data.addEventListener('input', count); count();
     this.$('#enc-out').innerHTML = this.isAdmin() ? '<p class="decision muted">Administrators may only use test keys. Operators use standard keys.</p>' : '';
     this.$('#enc-go').addEventListener('click', () => this.doEncrypt());
-    this.$('#dec-go').addEventListener('click', () => this.doDecrypt());
-    this.$('#dec-tamper').addEventListener('click', () => {
-      const t = this.$('#dec-pkg'), v = t.value.trim(); if (!v) return;
+    this.$('#ddeecc-go').addEventListener('click', () => this.doDecrypt());
+    this.$('#ddeecc-tamper').addEventListener('click', () => {
+      const t = this.$('#ddeecc-pkg'), v = t.value.trim(); if (!v) return;
       const i = Math.max(0, v.length - 6), c = v[i] === 'A' ? 'B' : 'A'; t.value = v.slice(0, i) + c + v.slice(i + 1);
       this.toast('One character changed in the ciphertext');
     });
@@ -1113,14 +1113,14 @@ class KeyCycleApp {
       const pkg = res.data.package;
       out.innerHTML = `<div class="pkg">${this.pkgHTML(pkg)}</div><div class="legend"><span><i style="background:var(--ink-3)"></i>format</span><span><i style="background:var(--gold)"></i>key id and version, bound in</span><span><i style="background:var(--patina)"></i>nonce</span><span><i style="background:var(--ink)"></i>ciphertext and tag</span></div>${this.decisionLine(res.result)}<div style="display:flex;gap:14px;margin-top:6px"><button class="linkbtn" type="button" id="send-open">Open it on the right</button><button class="linkbtn" type="button" id="copy-pkg">Copy</button></div>`;
       if (!this.RM) gsap.from(this.$$('#enc-out .pkg span'), { opacity: 0, y: 6, stagger: 0.08, duration: 0.4 });
-      this.$('#send-open').addEventListener('click', () => { this.$('#dec-pkg').value = pkg; if (!this.RM) gsap.fromTo('#dec-pkg', { backgroundColor: 'rgba(176,138,62,.3)' }, { backgroundColor: 'rgba(238,228,207,1)', duration: 1, clearProps: 'backgroundColor' }); });
+      this.$('#send-open').addEventListener('click', () => { this.$('#ddeecc-pkg').value = pkg; if (!this.RM) gsap.fromTo('#ddeecc-pkg', { backgroundColor: 'rgba(64,112,174,.3)' }, { backgroundColor: 'rgba(215,222,230,1)', duration: 1, clearProps: 'backgroundColor' }); });
       this.$('#copy-pkg').addEventListener('click', () => { if (navigator.clipboard) navigator.clipboard.writeText(pkg).then(() => this.toast('Package copied')); });
     } catch (err) {
       out.innerHTML = (err.body && err.body.result ? this.decisionLine(err.body.result) : `<p class="decision"><span class="chip no"><i></i>Refused</span> <code>${this.escape(err.code)}</code></p>`) + `<p class="muted" style="font-size:13px;margin:4px 0 0">${this.escape(this.explain(err))}</p>`;
     } finally { go.classList.remove('busy'); }
   }
   async doDecrypt() {
-    const pkg = this.$('#dec-pkg').value.trim(), out = this.$('#dec-out'), go = this.$('#dec-go');
+    const pkg = this.$('#ddeecc-pkg').value.trim(), out = this.$('#ddeecc-out'), go = this.$('#ddeecc-go');
     if (!pkg) { out.innerHTML = '<p class="decision muted">Paste a package first.</p>'; return; }
     go.classList.add('busy');
     try {
@@ -1128,7 +1128,7 @@ class KeyCycleApp {
       out.innerHTML = `<div class="pkg" style="color:var(--ink);white-space:pre-wrap">${this.escape(res.data.plaintext)}</div>${this.decisionLine(res.result)}`;
     } catch (err) {
       out.innerHTML = err.body && err.body.result ? this.decisionLine(err.body.result) : `<p class="decision"><span class="chip no"><i></i>Refused</span> <code>${this.escape(err.code)}</code></p><p class="muted" style="font-size:13px;margin:4px 0 0">${this.escape(this.explain(err))}</p>`;
-      if (!this.RM) gsap.fromTo('#dec-pkg', { x: -6 }, { x: 0, duration: 0.4, ease: 'elastic.out(1, 0.3)' });
+      if (!this.RM) gsap.fromTo('#ddeecc-pkg', { x: -6 }, { x: 0, duration: 0.4, ease: 'elastic.out(1, 0.3)' });
     } finally { go.classList.remove('busy'); }
   }
 
